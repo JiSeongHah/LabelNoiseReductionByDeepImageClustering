@@ -488,7 +488,7 @@ if __name__ == '__main__':
     max_ep = 50
     wayofdata = 'sum'
     noise_ratio = 1
-    split_ratio = int(5923*0.02)
+    split_ratio = int(5923*0.01)
 
     createDirectory('./hjs_dir1/dir_reinforce_new1/test1/')
 
