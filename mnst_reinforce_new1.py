@@ -45,7 +45,7 @@ class Config(dict):
 
 
 class REINFORCE_TORCH(nn.Module):
-    def __init__(self, gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,val_data,val_label,rwd_spread,
+    def __init__(self, gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,val_data,val_label,rwd_spread,beta4f1,
                  theta_stop_threshold,rl_stop_threshold,test_fle_down_path,theta_gpu_num,model_save_load_path,theta_max_epch,max_ep):
         super(REINFORCE_TORCH, self).__init__()
 
@@ -87,6 +87,7 @@ class REINFORCE_TORCH(nn.Module):
         self.rl_stop_threshold = rl_stop_threshold
         self.reward_normalize = reward_normalize
         self.max_ep = max_ep
+        self.beta4f1 = beta4f1
 
         ########################do validation dataset change##########################
         self.val_label_zero = val_label[val_label == 0]
@@ -146,7 +147,8 @@ class REINFORCE_TORCH(nn.Module):
         trainer_part = pl.Trainer(max_steps=50000, max_epochs=1, gpus=self.theta_gpu_num,strategy='dp',
                                   logger=False,checkpoint_callback=False,num_sanity_val_steps=0,weights_summary=None)
 
-        theta_model_part = Prediction_lit_4REINFORCE1(save_dir=self.test_fle_down_path,save_range=10,stop_threshold=self.theta_stop_threshold)
+        theta_model_part = Prediction_lit_4REINFORCE1(save_dir=self.test_fle_down_path,save_range=10,
+                                                      stop_threshold=self.theta_stop_threshold,beta4f1=self.beta4f1)
         print(f'theta stop_threshold is : {self.theta_stop_threshold}')
 
         inputs_data, inputs_label = action[0], action[1]
@@ -298,6 +300,9 @@ class REINFORCE_TORCH(nn.Module):
         self.optimizer.step()
         print('gradient optimization done')
 
+        print(f'self.loss_lst_trn is : {self.loss_lst_trn}')
+        print(f'self.total_rwd_lst_trn is : {self.total_reward_lst_trn}')
+
         fig = plt.figure()
         ax1 = fig.add_subplot(1, 2, 1)
         ax1.plot(range(len(self.loss_lst_trn)), self.loss_lst_trn)
@@ -306,12 +311,12 @@ class REINFORCE_TORCH(nn.Module):
         ax2.plot(range(len(self.total_reward_lst_trn)), self.total_reward_lst_trn)
         ax2.set_title('reward')
 
-        try:
-            plt.savefig(self.test_fle_down_path+'testplot.png', dpi=400)
-            print('saving plot complete!')
-            plt.close()
-        except:
-            print('saving failed')
+
+        print(f'self.test_fle_down_path is : {self.test_fle_down_path}testplot.png')
+        plt.savefig(self.test_fle_down_path+'testplot.png', dpi=200)
+        print('saving plot complete!')
+        plt.close()
+
 
         good_data_lst = []
         good_label_lst = []
@@ -350,7 +355,7 @@ class REINFORCE_TORCH(nn.Module):
 
 class EXCUTE_RL:
     def __init__(self,gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,rwd_spread,
-                 theta_stop_threshold,rl_stop_threshold,test_fle_down_path,trn_fle_down_path,
+                 theta_stop_threshold,rl_stop_threshold,test_fle_down_path,trn_fle_down_path,beta4f1,
                  theta_gpu_num,model_save_load_path,theta_max_epch,max_ep,wayofdata,noise_ratio,split_ratio):
 
         ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
@@ -369,6 +374,7 @@ class EXCUTE_RL:
         self.theta_stop_threshold = theta_stop_threshold
         self.rl_stop_threshold = rl_stop_threshold
         self.rwd_spread = rwd_spread
+        self.beta4f1 = beta4f1
 
         self.eps = eps
 
@@ -437,7 +443,8 @@ class EXCUTE_RL:
                                           reward_normalize=self.reward_normalize,val_data=RL_val_inputs,val_label=RL_val_labels,
                                           theta_stop_threshold=self.theta_stop_threshold,rl_stop_threshold=self.rl_stop_threshold,
                                           test_fle_down_path=self.test_fle_down_path,theta_gpu_num=self.theta_gpu_num,rwd_spread=self.rwd_spread,
-                                          model_save_load_path=self.model_save_load_path,theta_max_epch=self.theta_max_epch,max_ep=self.MAX_EP)
+                                          model_save_load_path=self.model_save_load_path,theta_max_epch=self.theta_max_epch,max_ep=self.MAX_EP,
+                                          beta4f1=self.beta4f1)
 
         for i in range(10000):
             print(f'{i} th training RL start')
@@ -478,26 +485,32 @@ if __name__ == '__main__':
     reward_normalize = True
     theta_stop_threshold = 0.01
     rl_stop_threshold = 0.01
-    test_fle_down_path = './hjs_dir1/dir_reinforce_new1/test1/'
-    trn_fle_down_path ='./hjs_dir1/dir_reinforce_new1/test1/'
     theta_gpu_num = [0]
-    model_save_load_path = './hjs_dir1/dir_reinforce_new1/test1/'
     rwd_spread = True
-
     theta_max_epch = 200
     max_ep = 50
     wayofdata = 'sum'
-    noise_ratio = 1
-    split_ratio = int(5923*0.01)
+    beta4f1 = 100
+    noise_ratio = 1.5
+    split_ratio = int(5923*0.05)
 
-    createDirectory('./hjs_dir1/dir_reinforce_new1/test1/')
+    specific_dir_name = mk_name(rwd_spread=rwd_spread,reward_normalize=reward_normalize,noise_ratio=noise_ratio,split_ratio=split_ratio,beta=1)
+
+    test_fle_down_path = '/home/a286winteriscoming/hjs_dir1/'+specific_dir_name +'/'
+    trn_fle_down_path = '/home/a286winteriscoming/hjs_dir1/'+specific_dir_name + '/'
+    model_save_load_path = '/home/a286winteriscoming/hjs_dir1/'+specific_dir_name + '/'
+    createDirectory('/home/a286winteriscoming/hjs_dir1/'+specific_dir_name)
 
     do_it = EXCUTE_RL(gamma=gamma,eps=eps,rl_lr=rl_lr,rl_b_size=rl_b_size,theta_b_size=theta_b_size,reward_normalize=reward_normalize,
                  theta_stop_threshold=theta_stop_threshold,rl_stop_threshold=rl_stop_threshold,test_fle_down_path=test_fle_down_path,
                       trn_fle_down_path=trn_fle_down_path,theta_gpu_num=theta_gpu_num,model_save_load_path=model_save_load_path,rwd_spread=rwd_spread,
-                      theta_max_epch=theta_max_epch,max_ep=max_ep,wayofdata=wayofdata,noise_ratio=noise_ratio,split_ratio=split_ratio)
+                      theta_max_epch=theta_max_epch,max_ep=max_ep,wayofdata=wayofdata,noise_ratio=noise_ratio,split_ratio=split_ratio,
+                      beta4f1=beta4f1)
 
     excute_rl = do_it.excute_RL()
+
+
+
 
 
 

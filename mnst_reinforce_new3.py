@@ -29,6 +29,7 @@ from REINFORCE_DATAMODULES import datamodule_4REINFORCE1
 from REINFORCE_INNER_MODELS import Prediction_lit_4REINFORCE1
 from MK_NOISED_DATA import mk_noisy_data
 from save_funcs import load_my_model
+
 # config 클래스
 class Config(dict):
     __getattr__ = dict.__getitem__
@@ -44,7 +45,7 @@ class Config(dict):
 
 
 class REINFORCE_TORCH(nn.Module):
-    def __init__(self, gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,val_data,val_label,
+    def __init__(self, gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,val_data,val_label,rwd_spread,beta4f1,
                  theta_stop_threshold,rl_stop_threshold,test_fle_down_path,theta_gpu_num,model_save_load_path,theta_max_epch,max_ep):
         super(REINFORCE_TORCH, self).__init__()
 
@@ -52,9 +53,14 @@ class REINFORCE_TORCH(nn.Module):
         self.model_save_load_path = model_save_load_path
 
         try:
-            self.REINFORCE_model = torch.load(load_my_model(self.model_save_load_path))
+
+            print('self.model_save_load_path is ',self.model_save_load_path)
+
             self.model_num_now = float((load_my_model(self.model_save_load_path).split('/')[-1].split('.')[0]))
+            print('self.model_num_now is : ',self.model_num_now)
+            self.REINFORCE_model = torch.load(load_my_model(self.model_save_load_path))
             print('model loading done')
+            time.sleep(5)
             print('successsuccesssuccesssuccesssuccesssuccesssuccesssuccess')
         except:
             print('model loading failed so loaded fresh model')
@@ -81,7 +87,7 @@ class REINFORCE_TORCH(nn.Module):
         self.rl_stop_threshold = rl_stop_threshold
         self.reward_normalize = reward_normalize
         self.max_ep = max_ep
-
+        self.beta4f1 = beta4f1
 
         ########################do validation dataset change##########################
         self.val_label_zero = val_label[val_label == 0]
@@ -91,14 +97,15 @@ class REINFORCE_TORCH(nn.Module):
         self.val_data_rest = val_data[val_label != 0]
         self.val_label_rest = torch.ones_like(self.val_label_rest)
 
-        self.val_data = torch.cat((self.val_data_rest, self.val_data_zero), dim=0)
-        self.val_label = torch.cat((self.val_label_rest, self.val_label_zero), dim=0)
+        self.val_data = torch.cat((self.val_data_rest,self.val_data_zero),dim=0)
+        self.val_label = torch.cat((self.val_label_rest,self.val_label_zero),dim=0)
 
         del self.val_label_zero
         del self.val_label_rest
         del self.val_data_rest
         del self.val_data_zero
         ######################################do validation dataset change#################
+        self.rwd_spread = rwd_spread
 
         self.optimizer = Adam(self.REINFORCE_model.parameters(),
                               lr=self.rl_lr,  # 학습률
@@ -140,13 +147,14 @@ class REINFORCE_TORCH(nn.Module):
         trainer_part = pl.Trainer(max_steps=50000, max_epochs=1, gpus=self.theta_gpu_num,strategy='dp',
                                   logger=False,checkpoint_callback=False,num_sanity_val_steps=0,weights_summary=None)
 
-        theta_model_part = Prediction_lit_4REINFORCE1(save_dir=self.test_fle_down_path,save_range=10,stop_threshold=self.theta_stop_threshold)
+        theta_model_part = Prediction_lit_4REINFORCE1(save_dir=self.test_fle_down_path,save_range=10,
+                                                      stop_threshold=self.theta_stop_threshold,beta4f1=self.beta4f1)
         print(f'theta stop_threshold is : {self.theta_stop_threshold}')
 
         inputs_data, inputs_label = action[0], action[1]
 
         dm = datamodule_4REINFORCE1(batch_size=self.theta_b_size, total_tdata=inputs_data, total_tlabel=inputs_label,
-                        val_data=inputs_data, val_label=inputs_label)
+                        val_data=self.val_data, val_label=self.val_label)
 
         time1 = time.time()
         avg_time = []
@@ -164,10 +172,10 @@ class REINFORCE_TORCH(nn.Module):
 
             if len(theta_model_part.avg_acc_lst_val_f1score) > 11:
                 print(
-                    f'mean of lastest 10 val f1score is : \
+                    f'mean error of lastest 10 val f1score is : \
                     {cal_avg_error(theta_model_part.avg_acc_lst_val_f1score[-10:] , theta_model_part.avg_acc_lst_val_f1score[-11:-1])}\
                      while stop_threshold is : {self.theta_stop_threshold}')
-                print(f'mean of latest 10 val precision is : \
+                print(f'mean  of latest 10 val precision is : \
                 {np.mean(theta_model_part.avg_acc_lst_val_PRECISION[-10:])} \
                 and 'f'mean of latest 10 val recall is : \
                       {np.mean(theta_model_part.avg_acc_lst_val_RECALL[-5:])}')
@@ -178,7 +186,7 @@ class REINFORCE_TORCH(nn.Module):
 
                     break
 
-            time.sleep(3)
+            time.sleep(5)
             print('----------------------------------------------------------------------')
             print('      ')
             print('      ')
@@ -191,11 +199,11 @@ class REINFORCE_TORCH(nn.Module):
         theta_model_part.flush_lst()
         del theta_model_part
         del trainer_part
+        del dm
 
         return reward, done, info
 
     def training_step(self, RL_td_zero,RL_tl_zero,RL_td_rest,RL_tl_rest,training_num):
-
 
         print(f'shape of b_input which is zero only is : {RL_td_rest.shape}')
         RL_td_rest = torch.from_numpy(RL_td_rest).unsqueeze(1)
@@ -238,20 +246,23 @@ class REINFORCE_TORCH(nn.Module):
                 good_data_tensor = torch.cat((good_data_tensor,b_input.clone().detach()),dim=0)
                 good_label_tensor = torch.cat((good_label_tensor,b_label.clone().detach()),dim=0)
                 data_filter_tensor = torch.cat((data_filter_tensor,action_bool.clone().detach()),dim=0)
-            print(count_num, good_data_tensor.size(), good_label_tensor.size(), data_filter_tensor.size())
-            print(f'good_data_tensor is in device: {good_data_tensor.device}')
+            #print(count_num, good_data_tensor.size(), good_label_tensor.size(), data_filter_tensor.size())
+            #print(f'good_data_tensor is in device: {good_data_tensor.device}')
 
             count_num +=1
 
         print(f'size of filterd data is : {good_data_tensor[data_filter_tensor].size()}')
         print(f'size of filterd label is : {good_label_tensor[data_filter_tensor].size()}')
 
+
+
+
+
+
+
         del train_data
         del train_sampler
         del train_dataloader
-
-
-        self.R_lst = self.R_lst[:-1]
 
 
         action_4_step = [torch.cat((RL_td_rest,good_data_tensor[data_filter_tensor]),dim=0)
@@ -259,7 +270,13 @@ class REINFORCE_TORCH(nn.Module):
 
         reward, done, info = self.step(action=action_4_step, training_num=training_num)
 
-        self.R_lst.append(reward)
+
+        if self.rwd_spread == True:
+            self.R_lst = [reward/len(self.R_lst) for i in range(len(self.R_lst))]
+        else:
+            self.R_lst = self.R_lst[:-1]
+            self.R_lst.append(reward)
+
         self.total_reward_lst_trn.append(reward)
 
         Return = 0
@@ -283,6 +300,9 @@ class REINFORCE_TORCH(nn.Module):
         self.optimizer.step()
         print('gradient optimization done')
 
+        print(f'self.loss_lst_trn is : {self.loss_lst_trn}')
+        print(f'self.total_rwd_lst_trn is : {self.total_reward_lst_trn}')
+
         fig = plt.figure()
         ax1 = fig.add_subplot(1, 2, 1)
         ax1.plot(range(len(self.loss_lst_trn)), self.loss_lst_trn)
@@ -291,17 +311,16 @@ class REINFORCE_TORCH(nn.Module):
         ax2.plot(range(len(self.total_reward_lst_trn)), self.total_reward_lst_trn)
         ax2.set_title('reward')
 
-        try:
-            plt.savefig(self.test_fle_down_path+'testplot'+str(self.model_num_now)+'.png', dpi=400)
-            print('saving plot complete!')
-            plt.close()
-        except:
-            print('saving failed')
+
+        print(f'self.test_fle_down_path is : {self.test_fle_down_path}testplot.png')
+        plt.savefig(self.test_fle_down_path+'testplot.png', dpi=200)
+        print('saving plot complete!')
+        plt.close()
+
 
         good_data_lst = []
         good_label_lst = []
         data_filter_lst = []
-
 
         self.flush_lst()
 
@@ -335,8 +354,8 @@ class REINFORCE_TORCH(nn.Module):
 
 
 class EXCUTE_RL:
-    def __init__(self,gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,
-                 theta_stop_threshold,rl_stop_threshold,test_fle_down_path,trn_fle_down_path,
+    def __init__(self,gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,rwd_spread,
+                 theta_stop_threshold,rl_stop_threshold,test_fle_down_path,trn_fle_down_path,beta4f1,
                  theta_gpu_num,model_save_load_path,theta_max_epch,max_ep,wayofdata,noise_ratio,split_ratio):
 
         ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
@@ -354,6 +373,8 @@ class EXCUTE_RL:
         self.theta_max_epch = theta_max_epch
         self.theta_stop_threshold = theta_stop_threshold
         self.rl_stop_threshold = rl_stop_threshold
+        self.rwd_spread = rwd_spread
+        self.beta4f1 = beta4f1
 
         self.eps = eps
 
@@ -379,6 +400,10 @@ class EXCUTE_RL:
         RL_train_data_zero = RL_train_data[RL_train_label == 0]
         RL_train_data_rest = RL_train_data[RL_train_label != 0]
 
+        RL_val_inputs = torch.from_numpy(RL_val_dataset.data.numpy()).clone().detach().unsqueeze(1)
+        RL_val_labels = torch.from_numpy(RL_val_dataset.targets.numpy()).clone().detach()
+
+
         if self.wayofdata == 'sum':
             RL_train_data_zero_little = torch.from_numpy(mk_noisy_data(raw_data=RL_train_data_zero, noise_ratio=self.noise_ratio,
                                                   split_ratio=self.split_ratio, way=self.wayofdata)).unsqueeze(1)
@@ -387,12 +412,17 @@ class EXCUTE_RL:
             RL_train_data_zero_little = torch.from_numpy(mk_noisy_data(raw_data=RL_train_data_zero, noise_ratio=self.noise_ratio,
                                                       split_ratio=self.split_ratio, way=self.wayofdata)).unsqueeze(1)
             RL_train_label_zero_little = torch.from_numpy(RL_train_label_zero[:self.split_ratio])
+        elif self.wayofdata == 'noiseonly':
+            RL_train_data_zero_little = torch.from_numpy(
+                mk_noisy_data(raw_data=RL_train_data_zero, noise_ratio=self.noise_ratio,
+                              split_ratio=self.split_ratio, way=self.wayofdata)).unsqueeze(1)
+            RL_train_label_zero_little = torch.from_numpy(RL_train_label_zero[:])
+
 
 
         print('spliting train data done')
         print('start val data job....')
-        RL_val_inputs = torch.from_numpy(RL_val_dataset.data.numpy()).clone().detach().unsqueeze(1)
-        RL_val_labels = torch.from_numpy(RL_val_dataset.targets.numpy()).clone().detach()
+
         print(f'shape of val_inputs is : {RL_val_inputs.shape}')
         print('spliting validation ddddata done')
 
@@ -412,8 +442,9 @@ class EXCUTE_RL:
         REINFORCE_START = REINFORCE_TORCH(gamma=self.gamma,eps=self.eps,rl_lr=self.rl_lr,rl_b_size=self.rl_b_size,theta_b_size=self.theta_b_size,
                                           reward_normalize=self.reward_normalize,val_data=RL_val_inputs,val_label=RL_val_labels,
                                           theta_stop_threshold=self.theta_stop_threshold,rl_stop_threshold=self.rl_stop_threshold,
-                                          test_fle_down_path=self.test_fle_down_path,theta_gpu_num=self.theta_gpu_num,
-                                          model_save_load_path=self.model_save_load_path,theta_max_epch=self.theta_max_epch,max_ep=self.MAX_EP)
+                                          test_fle_down_path=self.test_fle_down_path,theta_gpu_num=self.theta_gpu_num,rwd_spread=self.rwd_spread,
+                                          model_save_load_path=self.model_save_load_path,theta_max_epch=self.theta_max_epch,max_ep=self.MAX_EP,
+                                          beta4f1=self.beta4f1)
 
         for i in range(10000):
             print(f'{i} th training RL start')
@@ -422,7 +453,14 @@ class EXCUTE_RL:
                                           RL_td_rest=RL_train_data_rest, RL_tl_rest=RL_train_label_rest, training_num=i)
             if i%50 ==0 and i!=0:
                 try:
-                    torch.save(REINFORCE_START,self.model_save_load_path+str(i+REINFORCE_TORCH.model_num_now)+'.pt')
+                    print(f'REINFORCE_START.model_num_now is : {REINFORCE_START.model_num_now}')
+                    torch.save(REINFORCE_START,self.model_save_load_path+str(i+REINFORCE_START.model_num_now)+'.pt')
+                    print('saving RL model complete')
+                    print('saving RL model complete')
+                    print('saving RL model complete')
+                    print('saving RL model complete')
+                    print('saving RL model complete')
+                    print('saving RL model complete')
                 except:
                     print('saving model failed')
             print(f'{i} th training for RL done')
@@ -436,34 +474,43 @@ class EXCUTE_RL:
             print('                   ')
             print(f' reward lst is : {REINFORCE_START.total_reward_lst_trn}')
 
+
+
 if __name__ == '__main__':
-    gamma = 0.99
+    gamma = 0.999
     eps = 1e-9
     rl_lr = 4e-06
     rl_b_size = 1
     theta_b_size = 1024
     reward_normalize = True
-    theta_stop_threshold = 0.001
+    theta_stop_threshold = 0.01
     rl_stop_threshold = 0.01
-    test_fle_down_path = './dir_reinforce_new1/test3/'
-    trn_fle_down_path ='./dir_reinforce_new1/test3/'
     theta_gpu_num = [2]
-    model_save_load_path = './dir_reinforce_new1/test3/'
-
+    rwd_spread = True
     theta_max_epch = 200
     max_ep = 50
     wayofdata = 'sum'
-    noise_ratio = 1
-    split_ratio = int(5923*0.04)
+    beta4f1 = 100
+    noise_ratio = 1.5
+    split_ratio = int(5923*0.05)
 
-    createDirectory('./dir_reinforce_new1/test3/')
+    specific_dir_name = mk_name(rwd_spread=rwd_spread,reward_normalize=reward_normalize,noise_ratio=noise_ratio,split_ratio=split_ratio,beta=1)
+
+    test_fle_down_path = '/home/a286winteriscoming/hjs_dir1/'+specific_dir_name +'/'
+    trn_fle_down_path = '/home/a286winteriscoming/hjs_dir1/'+specific_dir_name + '/'
+    model_save_load_path = '/home/a286winteriscoming/hjs_dir1/'+specific_dir_name + '/'
+    createDirectory('/home/a286winteriscoming/hjs_dir1/'+specific_dir_name)
 
     do_it = EXCUTE_RL(gamma=gamma,eps=eps,rl_lr=rl_lr,rl_b_size=rl_b_size,theta_b_size=theta_b_size,reward_normalize=reward_normalize,
                  theta_stop_threshold=theta_stop_threshold,rl_stop_threshold=rl_stop_threshold,test_fle_down_path=test_fle_down_path,
-                      trn_fle_down_path=trn_fle_down_path,theta_gpu_num=theta_gpu_num,model_save_load_path=model_save_load_path,
-                      theta_max_epch=theta_max_epch,max_ep=max_ep,wayofdata=wayofdata,noise_ratio=noise_ratio,split_ratio=split_ratio)
+                      trn_fle_down_path=trn_fle_down_path,theta_gpu_num=theta_gpu_num,model_save_load_path=model_save_load_path,rwd_spread=rwd_spread,
+                      theta_max_epch=theta_max_epch,max_ep=max_ep,wayofdata=wayofdata,noise_ratio=noise_ratio,split_ratio=split_ratio,
+                      beta4f1=beta4f1)
 
     excute_rl = do_it.excute_RL()
-    print('testline')
+
+
+
+
 
 
