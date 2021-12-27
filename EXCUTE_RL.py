@@ -6,7 +6,8 @@ from REINFORCE_TORCH import REINFORCE_TORCH
 class EXCUTE_RL:
     def __init__(self,gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,rwd_spread,inner_max_step,
                  theta_stop_threshold,rl_stop_threshold,test_fle_down_path,trn_fle_down_path,beta4f1,
-                 theta_gpu_num,model_save_load_path,theta_max_epch,max_ep,wayofdata,noise_ratio,split_ratio):
+                 theta_gpu_num,model_save_load_path,theta_max_epch,max_ep,wayofdata,noise_ratio,split_ratio,
+                 conv_crit_num):
 
         ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
         self.rl_b_size = rl_b_size
@@ -26,6 +27,7 @@ class EXCUTE_RL:
         self.rwd_spread = rwd_spread
         self.beta4f1 = beta4f1
         self.inner_max_step = inner_max_step
+        self.conv_crit_num = conv_crit_num
 
         self.eps = eps
 
@@ -95,7 +97,8 @@ class EXCUTE_RL:
                                           theta_stop_threshold=self.theta_stop_threshold,rl_stop_threshold=self.rl_stop_threshold,
                                           test_fle_down_path=self.test_fle_down_path,theta_gpu_num=self.theta_gpu_num,rwd_spread=self.rwd_spread,
                                           model_save_load_path=self.model_save_load_path,theta_max_epch=self.theta_max_epch,max_ep=self.MAX_EP,
-                                          beta4f1=self.beta4f1,inner_max_step=self.inner_max_step)
+                                          beta4f1=self.beta4f1,inner_max_step=self.inner_max_step,
+                                          conv_crit_num=self.conv_crit_num)
 
         for i in range(10000):
             print(f'{i} th training RL start')

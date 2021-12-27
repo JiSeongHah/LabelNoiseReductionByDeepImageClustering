@@ -7,20 +7,22 @@ if __name__ == '__main__':
     eps = 1e-9
     rl_lr = 4e-06
     rl_b_size = 1
-    theta_b_size = 1024
+    theta_b_size = 8192
     reward_normalize = True
     theta_stop_threshold = 0.01
     rl_stop_threshold = 0.01
     theta_gpu_num = [3]
     rwd_spread = True
-    theta_max_epch = 200
+    theta_max_epch = 25
     max_ep = 50
-    inner_max_step = 1
+    conv_crit_num = 5
+    inner_max_step = 11
     wayofdata = 'sum'
     beta4f1 = 100
-    noise_ratio = 1.3
+    noise_ratio = 0.9
     split_ratio = int(5923*0.05)
-    master_dir = '/home/a286winteriscoming/'
+    master_dir = '/home/a286/'
+
     specific_dir_name = mk_name(rwd_spread=rwd_spread,reward_normalize=reward_normalize,noise_ratio=noise_ratio,split_ratio=split_ratio,beta=1)
 
     test_fle_down_path = master_dir+'hjs_dir1/'+specific_dir_name +'/'
@@ -32,11 +34,9 @@ if __name__ == '__main__':
                  theta_stop_threshold=theta_stop_threshold,rl_stop_threshold=rl_stop_threshold,test_fle_down_path=test_fle_down_path,
                       trn_fle_down_path=trn_fle_down_path,theta_gpu_num=theta_gpu_num,model_save_load_path=model_save_load_path,rwd_spread=rwd_spread,
                       theta_max_epch=theta_max_epch,max_ep=max_ep,wayofdata=wayofdata,noise_ratio=noise_ratio,split_ratio=split_ratio,
-                      beta4f1=beta4f1,inner_max_step=inner_max_step)
+                      beta4f1=beta4f1,inner_max_step=inner_max_step,conv_crit_num=conv_crit_num)
 
     excute_rl = do_it.excute_RL()
-
-
 
 
 

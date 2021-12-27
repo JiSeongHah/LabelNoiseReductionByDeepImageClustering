@@ -32,8 +32,9 @@ from save_funcs import load_my_model
 
 
 class REINFORCE_TORCH(nn.Module):
-    def __init__(self, gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,val_data,val_label,rwd_spread,beta4f1,inner_max_step,
-                 theta_stop_threshold,rl_stop_threshold,test_fle_down_path,theta_gpu_num,model_save_load_path,theta_max_epch,max_ep):
+    def __init__(self, gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,val_data,val_label,rwd_spread,beta4f1,
+                 inner_max_step,theta_stop_threshold,rl_stop_threshold,test_fle_down_path,theta_gpu_num,
+                 model_save_load_path,theta_max_epch,max_ep,conv_crit_num):
         super(REINFORCE_TORCH, self).__init__()
 
         self.test_fle_down_path = test_fle_down_path
@@ -106,6 +107,7 @@ class REINFORCE_TORCH(nn.Module):
         self.theta_stop_threshold = theta_stop_threshold
         self.theta_gpu_num = theta_gpu_num
         self.inner_max_step = inner_max_step
+        self.conv_crit_num = conv_crit_num
         ##########################VARS for INNER THETA model##################################
 
 
@@ -192,17 +194,17 @@ class REINFORCE_TORCH(nn.Module):
             print('saving plot complete!')
             plt.close()
 
-            if len(theta_model_part.avg_acc_lst_val_f1score) > 11:
+            if len(theta_model_part.avg_acc_lst_val_f1score) > self.conv_crit_num+2:
                 print(
                     f'mean error of lastest 10 val f1score is : \
-                    {cal_avg_error(theta_model_part.avg_acc_lst_val_f1score[-10:] , theta_model_part.avg_acc_lst_val_f1score[-11:-1])}\
+                    {cal_avg_error(theta_model_part.avg_acc_lst_val_f1score[-self.conv_crit_num:] , theta_model_part.avg_acc_lst_val_f1score[-self.conv_crit_num-1:-1])}\
                      while stop_threshold is : {self.theta_stop_threshold}')
                 print(f'mean  of latest 10 val precision is : \
-                {np.mean(theta_model_part.avg_acc_lst_val_PRECISION[-10:])} \
+                {np.mean(theta_model_part.avg_acc_lst_val_PRECISION[-self.conv_crit_num:])} \
                 and 'f'mean of latest 10 val recall is : \
-                      {np.mean(theta_model_part.avg_acc_lst_val_RECALL[-5:])}')
+                      {np.mean(theta_model_part.avg_acc_lst_val_RECALL[-self.conv_crit_num:])}')
 
-                if ((cal_avg_error(theta_model_part.avg_acc_lst_val_f1score[-10:] , theta_model_part.avg_acc_lst_val_f1score[-11:-1])) < self.theta_stop_threshold)  or i >=self.theta_max_epch:
+                if ((cal_avg_error(theta_model_part.avg_acc_lst_val_f1score[-self.conv_crit_num:] , theta_model_part.avg_acc_lst_val_f1score[-self.conv_crit_num-1:-1])) < self.theta_stop_threshold)  or i >=self.theta_max_epch:
                     print(f'training complete at {i}th training')
                     print('breaking now.......')
 
@@ -214,7 +216,7 @@ class REINFORCE_TORCH(nn.Module):
             print('      ')
             print('      ')
 
-        reward = np.mean(theta_model_part.avg_acc_lst_val_f1score[-10:])
+        reward = np.mean(theta_model_part.avg_acc_lst_val_f1score[-self.conv_crit_num:])
         done = True
         info = 'step complete'
 
