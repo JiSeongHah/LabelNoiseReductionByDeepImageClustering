@@ -8,7 +8,7 @@ if __name__ == '__main__':
     eps = 1e-9
     rl_lr = 4e-06
     rl_b_size = 1
-    theta_b_size = 1024
+    theta_b_size = 8192
     reward_normalize = True
     theta_stop_threshold = 0.01
     rl_stop_threshold = 0.01

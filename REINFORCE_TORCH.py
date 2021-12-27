@@ -158,6 +158,37 @@ class REINFORCE_TORCH(nn.Module):
 
             theta_model_part.flush_lst()
 
+            fig = plt.figure()
+            ax1 = fig.add_subplot(2, 4, 1)
+            ax1.plot(range(len(theta_model_part.avg_loss_lst_trn)), theta_model_part.avg_loss_lst_trn)
+            ax1.set_title('train loss')
+            ax2 = fig.add_subplot(2, 4, 2)
+            ax2.plot(range(len(theta_model_part.avg_acc_lst_trn_PRECISION)), theta_model_part.avg_acc_lst_trn_PRECISION)
+            ax2.set_title('train PRECISION')
+            ax3 = fig.add_subplot(2, 4, 3)
+            ax3.plot(range(len(theta_model_part.avg_acc_lst_trn_RECALL)), theta_model_part.avg_acc_lst_trn_RECALL)
+            ax3.set_title('train RECALL')
+            ax4 = fig.add_subplot(2, 4, 4)
+            ax4.plot(range(len(theta_model_part.avg_acc_lst_trn_f1score)), theta_model_part.avg_acc_lst_trn_f1score)
+            ax4.set_title('train F1 SCORE')
+
+            ax5 = fig.add_subplot(2, 4, 5)
+            ax5.plot(range(len(theta_model_part.avg_loss_lst_val)), theta_model_part.avg_loss_lst_val)
+            ax5.set_title('val loss')
+            ax6 = fig.add_subplot(2, 4, 6)
+            ax6.plot(range(len(theta_model_part.avg_acc_lst_val_PRECISION)), theta_model_part.avg_acc_lst_val_PRECISION)
+            ax6.set_title('val PRECISION')
+            ax7 = fig.add_subplot(2, 4, 7)
+            ax7.plot(range(len(theta_model_part.avg_acc_lst_val_RECALL)), theta_model_part.avg_acc_lst_val_RECALL)
+            ax7.set_title('val RECALL')
+            ax8 = fig.add_subplot(2, 4, 8)
+            ax8.plot(range(len(theta_model_part.avg_acc_lst_val_f1score)), theta_model_part.avg_acc_lst_val_f1score)
+            ax8.set_title('val F1 SCORE')
+
+            plt.savefig(self.test_fle_down_path + 'inner_model_result.png', dpi=400)
+            print('saving plot complete!')
+            plt.close()
+
             if len(theta_model_part.avg_acc_lst_val_f1score) > 11:
                 print(
                     f'mean error of lastest 10 val f1score is : \
@@ -295,7 +326,7 @@ class REINFORCE_TORCH(nn.Module):
 
 
         print(f'self.test_fle_down_path is : {self.test_fle_down_path}testplot.png')
-        plt.savefig(self.test_fle_down_path+'testplot.png', dpi=400)
+        plt.savefig(self.test_fle_down_path+'RL_reward_plot.png', dpi=400)
         print('saving plot complete!')
         plt.close()
 
