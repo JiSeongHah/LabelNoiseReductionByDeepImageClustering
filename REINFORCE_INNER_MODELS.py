@@ -7,6 +7,7 @@ from torchvision import models
 from CALAVG import cal_avg_error
 from MY_MODELS import BasicBlock, ResNet
 from save_funcs import mk_name,lst2csv
+import matplotlib.pyplot as plt
 
 class Prediction_lit_4REINFORCE1(pl.LightningModule):
     def __init__(self,save_dir,save_range,stop_threshold,beta4f1=100):
@@ -196,7 +197,6 @@ class Prediction_lit_4REINFORCE1(pl.LightningModule):
         FN_val = np.sum(self.b_size_lst_val_FALSE_NEGATIVE)
 
 
-
         PRECISION_val = TP_val / (TP_val + FP_val+1e-9)
         RECALL_val = TP_val / (TP_val + FN_val+1e-9)
         F1_score_val = ((self.beta4f1 * self.beta4f1 + 1) * PRECISION_val * RECALL_val) / (
@@ -215,6 +215,37 @@ class Prediction_lit_4REINFORCE1(pl.LightningModule):
         self.avg_acc_lst_val_PRECISION.append(PRECISION_val)
         self.avg_acc_lst_val_RECALL.append(RECALL_val)
         self.avg_acc_lst_val_f1score.append(F1_score_val)
+
+        fig = plt.figure()
+        ax1 = fig.add_subplot(2, 4, 1)
+        ax1.plot(range(len(self.avg_loss_lst_trn)), self.avg_loss_lst_trn)
+        ax1.set_title('train loss')
+        ax2 = fig.add_subplot(2, 4, 2)
+        ax2.plot(range(len(self.avg_acc_lst_trn_PRECISION)), self.avg_acc_lst_trn_PRECISION)
+        ax2.set_title('train PRECISION')
+        ax3 = fig.add_subplot(2, 4, 3)
+        ax3.plot(range(len(self.avg_acc_lst_trn_RECALL)),self.avg_acc_lst_trn_RECALL)
+        ax3.set_title('train RECALL')
+        ax4 = fig.add_subplot(2, 4, 4)
+        ax4.plot(range(len(self.avg_acc_lst_trn_f1score)), self.avg_acc_lst_trn_f1score)
+        ax4.set_title('train F1 SCORE')
+
+        ax5 = fig.add_subplot(2, 4, 5)
+        ax5.plot(range(len(self.avg_loss_lst_val)), self.avg_loss_lst_val)
+        ax5.set_title('val loss')
+        ax6 = fig.add_subplot(2, 4, 6)
+        ax6.plot(range(len(self.avg_acc_lst_val_PRECISION)), self.avg_acc_lst_val_PRECISION)
+        ax6.set_title('val PRECISION')
+        ax7 = fig.add_subplot(2, 4, 7)
+        ax7.plot(range(len(self.avg_acc_lst_val_RECALL)), self.avg_acc_lst_val_RECALL)
+        ax7.set_title('val RECALL')
+        ax8 = fig.add_subplot(2, 4, 8)
+        ax8.plot(range(len(self.avg_acc_lst_val_f1score)), self.avg_acc_lst_val_f1score)
+        ax8.set_title('val F1 SCORE')
+
+        plt.savefig(self.save_dir+'.png', dpi=400)
+        print('saving plot complete!')
+        plt.close()
 
 
         # if len(self.avg_loss_lst_val)>6:

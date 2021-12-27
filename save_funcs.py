@@ -56,7 +56,7 @@ def load_my_model(path):
     model_lst = glob(path+'*.pt')
 
     #print(model_lst)
-    sorted_model_lst = sorted(model_lst,key=lambda x:  (x.split('.')[0]).split('/')[-1]  )[-1]
+    sorted_model_lst = sorted(model_lst,key=lambda x:  (x.split('.')[0]).split('/')[-1]  )[0]
     print('lst sored is : ',sorted_model_lst)
     return sorted_model_lst
 
