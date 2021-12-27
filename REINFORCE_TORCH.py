@@ -148,7 +148,7 @@ class REINFORCE_TORCH(nn.Module):
 
             trainer_part = pl.Trainer(max_steps=self.inner_max_step, max_epochs=1, gpus=self.theta_gpu_num,
                                       strategy='dp',
-                                      logger=False, enable_checkpointing=False, num_sanity_val_steps=-1,
+                                      logger=False, enable_checkpointing=False, num_sanity_val_steps=0,
                                       enable_model_summary=None)
 
             time2 = time.time()
@@ -156,6 +156,7 @@ class REINFORCE_TORCH(nn.Module):
             print(f'doing {i}th training of : {training_num} th RL training with b_size : {self.theta_b_size}')
 
             trainer_part.fit(theta_model_part, dm)
+            del trainer_part
             print(f'doing {i}th training done')
 
             theta_model_part.flush_lst()
@@ -219,7 +220,7 @@ class REINFORCE_TORCH(nn.Module):
 
         theta_model_part.flush_lst()
         del theta_model_part
-        del trainer_part
+        #del trainer_part
         del dm
 
         return reward, done, info
