@@ -1,5 +1,4 @@
 from save_funcs import mk_name,lst2csv,createDirectory
-
 from EXCUTE_RL import EXCUTE_RL
 
 
@@ -16,18 +15,18 @@ if __name__ == '__main__':
     rwd_spread = True
     theta_max_epch = 200
     max_ep = 50
-    inner_max_step = 100000
+    inner_max_step = 1
     wayofdata = 'sum'
     beta4f1 = 100
-    noise_ratio = 1.3
+    noise_ratio = 0.5
     split_ratio = int(5923*0.05)
 
     specific_dir_name = mk_name(rwd_spread=rwd_spread,reward_normalize=reward_normalize,noise_ratio=noise_ratio,split_ratio=split_ratio,beta=1)
 
-    test_fle_down_path = '/home/a286winteriscoming/hjs_dir1/'+specific_dir_name +'/'
-    trn_fle_down_path = '/home/a286winteriscoming/hjs_dir1/'+specific_dir_name + '/'
-    model_save_load_path = '/home/a286winteriscoming/hjs_dir1/'+specific_dir_name + '/'
-    createDirectory('/home/a286winteriscoming/hjs_dir1/'+specific_dir_name)
+    test_fle_down_path = '/home/a286/hjs_dir1/'+specific_dir_name +'/'
+    trn_fle_down_path = '/home/a286/hjs_dir1/'+specific_dir_name + '/'
+    model_save_load_path = '/home/a286/hjs_dir1/'+specific_dir_name + '/'
+    createDirectory('/home/a286/hjs_dir1/'+specific_dir_name)
 
     do_it = EXCUTE_RL(gamma=gamma,eps=eps,rl_lr=rl_lr,rl_b_size=rl_b_size,theta_b_size=theta_b_size,reward_normalize=reward_normalize,
                  theta_stop_threshold=theta_stop_threshold,rl_stop_threshold=rl_stop_threshold,test_fle_down_path=test_fle_down_path,
@@ -37,16 +36,6 @@ if __name__ == '__main__':
 
     excute_rl = do_it.excute_RL()
 
-
-################################MERRY CRHISTMASSSSS############################
-################################MERRY CRHISTMASSSSS############################
-################################MERRY CRHISTMASSSSS############################
-################################MERRY CRHISTMASSSSS############################
-################################MERRY CRHISTMASSSSS############################
-################################MERRY CRHISTMASSSSS############################
-################################MERRY CRHISTMASSSSS############################
-################################MERRY CRHISTMASSSSS############################
-################################MERRY CRHISTMASSSSS############################
 
 
 

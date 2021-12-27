@@ -14,10 +14,10 @@ if __name__ == '__main__':
     rwd_spread = True
     theta_max_epch = 200
     max_ep = 50
-    inner_max_step = 1
+    inner_max_step = 100000000
     wayofdata = 'sum'
     beta4f1 = 100
-    noise_ratio = 1.3
+    noise_ratio = 0.8
     split_ratio = int(5923*0.05)
 
     specific_dir_name = mk_name(rwd_spread=rwd_spread,reward_normalize=reward_normalize,noise_ratio=noise_ratio,split_ratio=split_ratio,beta=1)

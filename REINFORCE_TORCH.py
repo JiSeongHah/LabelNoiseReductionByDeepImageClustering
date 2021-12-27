@@ -132,9 +132,6 @@ class REINFORCE_TORCH(nn.Module):
 
     def step(self, action,training_num):
 
-        trainer_part = pl.Trainer(max_steps=self.inner_max_step, max_epochs=1, gpus=self.theta_gpu_num,strategy='dp',
-                                  logger=False,checkpoint_callback=False,num_sanity_val_steps=0,weights_summary=None)
-
         theta_model_part = Prediction_lit_4REINFORCE1(save_dir=self.test_fle_down_path,save_range=10,
                                                       stop_threshold=self.theta_stop_threshold,beta4f1=self.beta4f1)
         print(f'theta stop_threshold is : {self.theta_stop_threshold}')
@@ -148,6 +145,11 @@ class REINFORCE_TORCH(nn.Module):
         avg_time = []
 
         for i in range(10000):
+
+            trainer_part = pl.Trainer(max_steps=self.inner_max_step, max_epochs=1, gpus=self.theta_gpu_num,
+                                      strategy='dp',
+                                      logger=False, enable_checkpointing=False, num_sanity_val_steps=-1,
+                                      enable_model_summary=None)
 
             time2 = time.time()
             print('----------------------------------------------------------------------')
