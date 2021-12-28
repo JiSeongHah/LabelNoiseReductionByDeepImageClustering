@@ -2,6 +2,7 @@ import torch
 from torchvision.datasets import MNIST
 from MK_NOISED_DATA import mk_noisy_data
 from REINFORCE_TORCH import REINFORCE_TORCH
+from save_funcs import load_my_model
 
 class EXCUTE_RL:
     def __init__(self,gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,rwd_spread,inner_max_step,
@@ -94,7 +95,6 @@ class EXCUTE_RL:
         print('valid_dataloading done....')
 
         try:
-
             print('self.model_save_load_path is ',self.model_save_load_path)
             self.model_num_now = float((load_my_model(self.model_save_load_path).split('/')[-1].split('.')[0]))
             print('self.model_num_now is : ',self.model_num_now)

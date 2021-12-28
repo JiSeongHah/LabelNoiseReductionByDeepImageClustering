@@ -1,5 +1,7 @@
-from save_funcs import mk_name,lst2csv,createDirectory
+from save_funcs import mk_name,lst2csv,createDirectory,load_my_model
 from EXCUTE_RL import EXCUTE_RL
+from REINFORCE_TORCH import REINFORCE_TORCH
+
 
 
 if __name__ == '__main__':
@@ -20,7 +22,7 @@ if __name__ == '__main__':
     inner_max_step = 11
     wayofdata = 'sum'
     beta4f1 = 100
-    noise_ratio = 1.3
+    noise_ratio = 1.5
     split_ratio = int(5923*0.05)
     master_dir = '/home/a286winteriscoming/'
 

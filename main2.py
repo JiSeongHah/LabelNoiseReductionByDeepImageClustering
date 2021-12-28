@@ -173,6 +173,7 @@ if __name__ == '__main__':
     rwd_spread = True
     theta_max_epch = 25
     max_ep = 5000
+    RL_save_range = 50
     conv_crit_num = 5
     inner_max_step = 11
     wayofdata = 'sum'
@@ -195,7 +196,6 @@ if __name__ == '__main__':
                       beta4f1=beta4f1,inner_max_step=inner_max_step,conv_crit_num=conv_crit_num)
 
     excute_rl = do_it.excute_RL()
-
 
 
 
