@@ -1,95 +1,200 @@
-# import torch
-# import numpy as np
-# import math
-# from PIL import Image, TiffImagePlugin
-# from torchvision import transforms
-# from libtiff import TIFF
-# from glob import glob
-# import tifffile as tiff
-# import time
-# from MODELS import ResnetGenerator
-# import torch.nn as nn
-#
-# def sigmoid(x):
-#     return 1/(1 + np.exp(-x))
-#
-# def bce_loss(x,y):
-#     if y ==1:
-#         return -y*math.log(sigmoid(x))
-#     elif y ==0:
-#         return -(1-y)*math.log(1-sigmoid(x))
-#
-#
-#
-# img_file_dir = '/media/emeraldsword1423/My Passport/project2_dataset/Training/[라벨]train-label/Zone-A-001/Zone-A-001/Zone-A-001_000_001_gt.tif'
-# #f_name = 'Zone-A-001_000_001.tif'
-# # f_lst = glob(img_file_dir)
-# # print(f_lst)
-# # img = TIFF.open(img_file_dir)
-#
-# transformer = transforms.Compose([transforms.ToTensor()])
-#
-# img = tiff.imread(img_file_dir)
-# img = np.asarray(img)
-# #img = Image.open(img_file_dir)
-# # print(img.shape)
-# # print(type(img))
-# # for i in range(128):
-# #     for j in range(128):
-# #         print(img[i,j])
-# #         time.sleep(0.3)
-# target = transformer(img).unsqueeze(1)
-#
-#
-#
-# # print(target.size())
-#
-#
-# # input = torch.randn((1,3,128,128))
-# # model = ResnetGenerator(input_nc=3,output_nc=10)
-# # output = model(input)
-# # print(output.size())
-#
-# target = torch.zeros((1)).unsqueeze(0)
-# output = torch.tensor([0.1,0.2,0.3]).unsqueeze(0)
-#
-#
-# print(target.size(),output.size())
-# loss = nn.MultiLabelSoftMarginLoss(reduction='mean')
-#
-#
-# msml  = loss(output,target)
-# print(msml)
-#
-# bce = [bce_loss(output[0,0],0),bce_loss(output[0,1],0),bce_loss(output[0,2],0)]
-# print(np.mean(bce))
-#
-#
-# def label_shape_chage(label_tensor,label_num):
-#     tensor_shape_changed = torch.zeros((label_tensor.size(0),label_num,label_tensor.size(2),label_tensor.size(3)))
-#
-#     tensor_shape_changed[range(label_tensor.size(0)), ]
-#
-#     return tensor_shape_changed
-#
-# import torch.nn.functional as F
-#
-# x = torch.tensor([i for i in range(50)]).view(5,10)
-# print(x.size())
-#
-# y = F.one_hot(x)
-# print(y.size())
-#
-
-
 import torch
-import torch
+from torchvision.datasets import MNIST
+from MK_NOISED_DATA import mk_noisy_data
+from REINFORCE_TORCH import REINFORCE_TORCH
+from save_funcs import load_my_model
 
-print(torch.cuda.is_available())
+class EXCUTE_RL:
+    def __init__(self,gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,rwd_spread,inner_max_step,
+                 theta_stop_threshold,rl_stop_threshold,test_fle_down_path,trn_fle_down_path,beta4f1,
+                 theta_gpu_num,model_save_load_path,theta_max_epch,max_ep,wayofdata,noise_ratio,split_ratio,
+                 conv_crit_num):
 
-print(torch.cuda.get_device_name(0))
+        ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
+        self.rl_b_size = rl_b_size
+        self.theta_b_size = theta_b_size
+        self.gamma = gamma
+        self.rl_lr = rl_lr
+        self.reward_normalize = reward_normalize
 
-print(torch.cuda.device_count())
+        self.test_fle_down_path = test_fle_down_path
+        self.model_save_load_path = model_save_load_path
+        self.theta_gpu_num = theta_gpu_num
+
+        self.MAX_EP = max_ep
+        self.theta_max_epch = theta_max_epch
+        self.theta_stop_threshold = theta_stop_threshold
+        self.rl_stop_threshold = rl_stop_threshold
+        self.rwd_spread = rwd_spread
+        self.beta4f1 = beta4f1
+        self.inner_max_step = inner_max_step
+        self.conv_crit_num = conv_crit_num
+
+        self.eps = eps
+
+        ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
+        self.noise_ratio = noise_ratio
+        self.split_ratio = split_ratio
+        self.wayofdata = wayofdata
+        self.trn_fle_down_path = trn_fle_down_path
+        ####################################VARS FOR CLASS : EXCUTE_RL ############################
+
+
+    def excute_RL(self):
+
+        RL_train_dataset = MNIST(self.trn_fle_down_path, train=True, download=True)
+        RL_val_dataset = MNIST(self.trn_fle_down_path, train=False, download=True)
+
+        RL_train_data = RL_train_dataset.data.numpy()
+        RL_train_label = RL_train_dataset.targets.numpy()
+
+        RL_train_label_zero = RL_train_label[RL_train_label == 0]
+        RL_train_label_rest = RL_train_label[RL_train_label != 0]
+
+        RL_train_data_zero = RL_train_data[RL_train_label == 0]
+        RL_train_data_rest = RL_train_data[RL_train_label != 0]
+
+        RL_val_inputs = torch.from_numpy(RL_val_dataset.data.numpy()).clone().detach().unsqueeze(1)
+        RL_val_labels = torch.from_numpy(RL_val_dataset.targets.numpy()).clone().detach()
+
+
+        if self.wayofdata == 'sum':
+            RL_train_data_zero_little = torch.from_numpy(mk_noisy_data(raw_data=RL_train_data_zero, noise_ratio=self.noise_ratio,
+                                                  split_ratio=self.split_ratio, way=self.wayofdata)).unsqueeze(1)
+            RL_train_label_zero_little = torch.from_numpy(RL_train_label_zero[:])
+        elif self.wayofdata == 'pureonly':
+            RL_train_data_zero_little = torch.from_numpy(mk_noisy_data(raw_data=RL_train_data_zero, noise_ratio=self.noise_ratio,
+                                                      split_ratio=self.split_ratio, way=self.wayofdata)).unsqueeze(1)
+            RL_train_label_zero_little = torch.from_numpy(RL_train_label_zero[:self.split_ratio])
+        elif self.wayofdata == 'noiseonly':
+            RL_train_data_zero_little = torch.from_numpy(
+                mk_noisy_data(raw_data=RL_train_data_zero, noise_ratio=self.noise_ratio,
+                              split_ratio=self.split_ratio, way=self.wayofdata)).unsqueeze(1)
+            RL_train_label_zero_little = torch.from_numpy(RL_train_label_zero[:])
+
+
+
+        print('spliting train data done')
+        print('start val data job....')
+
+        print(f'shape of val_inputs is : {RL_val_inputs.shape}')
+        print('spliting validation ddddata done')
+
+        print('valid_dataloading.......')
+        # validation_data = TensorDataset(RL_val_inputs, RL_val_labels)
+        # validation_sampler = SequentialSampler(validation_data)
+        # validation_dataloader = DataLoader(validation_data, sampler=validation_sampler, batch_size=self.RL_b_size,
+        #                                    num_workers=4)
+
+        del RL_train_dataset
+        del RL_train_data
+        del RL_val_dataset
+
+        print('valid_dataloading done....')
+
+
+        try:
+
+            print('self.model_save_load_path is ',self.model_save_load_path)
+            self.model_num_now = float((load_my_model(self.model_save_load_path).split('/')[-1].split('.')[0]))
+            print('self.model_num_now is : ',self.model_num_now)
+            print('testttttttttttttt : ',load_my_model(self.model_save_load_path))
+
+            REINFORCE_START = torch.load(load_my_model(self.model_save_load_path))
+            REINFORCE_START.model_num_now = self.model_num_now
+            print(f'REINFORCE_START.model_num_now is : {REINFORCE_START.model_num_now}')
+            print(f'len of REINFORCE_START.total_reward_lst_trn : {len(REINFORCE_START.total_reward_lst_trn)}')
+            print('model loading doneeeeeeeeeeeeee')
+            #time.sleep(5)
+            print('successsuccesssuccesssuccesssuccesssuccesssuccesssuccess')
+        except:
+            print('model loading failed so loaded fresh model')
+            REINFORCE_START = REINFORCE_TORCH(gamma=self.gamma, eps=self.eps, rl_lr=self.rl_lr,
+                                              rl_b_size=self.rl_b_size, theta_b_size=self.theta_b_size,
+                                              reward_normalize=self.reward_normalize, val_data=RL_val_inputs,
+                                              val_label=RL_val_labels,
+                                              theta_stop_threshold=self.theta_stop_threshold,
+                                              rl_stop_threshold=self.rl_stop_threshold,
+                                              test_fle_down_path=self.test_fle_down_path,
+                                              theta_gpu_num=self.theta_gpu_num, rwd_spread=self.rwd_spread,
+                                              model_save_load_path=self.model_save_load_path,
+                                              theta_max_epch=self.theta_max_epch, max_ep=self.MAX_EP,
+                                              beta4f1=self.beta4f1, inner_max_step=self.inner_max_step,
+                                              conv_crit_num=self.conv_crit_num)
+            REINFORCE_START.model_num_now = 0
+            print('failedfailedfailedfailedfailedfailedfailedfailedfailedfailed')
+
+
+        for i in range(10000):
+            print(f'{i} th training RL start')
+
+            REINFORCE_START.training_step(RL_td_zero=RL_train_data_zero_little, RL_tl_zero=RL_train_label_zero_little,
+                                          RL_td_rest=RL_train_data_rest, RL_tl_rest=RL_train_label_rest, training_num=i)
+            if i%50 ==0 and i!=0:
+                try:
+                    print(f'REINFORCE_START.model_num_now is : {REINFORCE_START.model_num_now}')
+                    torch.save(REINFORCE_START,self.model_save_load_path+str(i+REINFORCE_START.model_num_now)+'.pt')
+                    print('saving RL model complete')
+                    print('saving RL model complete')
+                    print('saving RL model complete')
+                    print('saving RL model complete')
+                    print('saving RL model complete')
+                    print('saving RL model complete')
+                except:
+                    print('saving model failed')
+            print(f'{i} th training for RL done')
+            print('                   ')
+            print('                   ')
+            print('                   ')
+            print('                   ')
+            print('                   ')
+            print('                   ')
+            print('                   ')
+            print('                   ')
+            print(f' reward lst is : {REINFORCE_START.total_reward_lst_trn}')
+
+
+from save_funcs import mk_name,lst2csv,createDirectory
+
+
+
+
+
+if __name__ == '__main__':
+    gamma = 0.999
+    eps = 1e-9
+    rl_lr = 4e-06
+    rl_b_size = 1
+    theta_b_size = 8192
+    reward_normalize = True
+    theta_stop_threshold = 0.01
+    rl_stop_threshold = 0.01
+    theta_gpu_num = [0]
+    rwd_spread = True
+    theta_max_epch = 25
+    max_ep = 5000
+    conv_crit_num = 5
+    inner_max_step = 11
+    wayofdata = 'sum'
+    beta4f1 = 100
+    noise_ratio = 1.5
+    split_ratio = int(5923*0.05)
+    master_dir = '/home/a286winteriscoming/'
+
+    specific_dir_name = mk_name(rwd_spread=rwd_spread,reward_normalize=reward_normalize,noise_ratio=noise_ratio,split_ratio=split_ratio,beta=1)
+
+    test_fle_down_path = master_dir+'hjs_dir1/'+specific_dir_name +'/'
+    trn_fle_down_path =  master_dir+'hjs_dir1/'+specific_dir_name + '/'
+    model_save_load_path = master_dir+'hjs_dir1/'+specific_dir_name + '/'
+    createDirectory(master_dir+'/hjs_dir1/'+specific_dir_name)
+
+    do_it = EXCUTE_RL(gamma=gamma,eps=eps,rl_lr=rl_lr,rl_b_size=rl_b_size,theta_b_size=theta_b_size,reward_normalize=reward_normalize,
+                 theta_stop_threshold=theta_stop_threshold,rl_stop_threshold=rl_stop_threshold,test_fle_down_path=test_fle_down_path,
+                      trn_fle_down_path=trn_fle_down_path,theta_gpu_num=theta_gpu_num,model_save_load_path=model_save_load_path,rwd_spread=rwd_spread,
+                      theta_max_epch=theta_max_epch,max_ep=max_ep,wayofdata=wayofdata,noise_ratio=noise_ratio,split_ratio=split_ratio,
+                      beta4f1=beta4f1,inner_max_step=inner_max_step,conv_crit_num=conv_crit_num)
+
+    excute_rl = do_it.excute_RL()
 
 
 

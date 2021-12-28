@@ -40,21 +40,11 @@ class REINFORCE_TORCH(nn.Module):
         self.test_fle_down_path = test_fle_down_path
         self.model_save_load_path = model_save_load_path
 
-        try:
+        ####################################MODEL SETTINGG##############################3
 
-            print('self.model_save_load_path is ',self.model_save_load_path)
-
-            self.model_num_now = float((load_my_model(self.model_save_load_path).split('/')[-1].split('.')[0]))
-            print('self.model_num_now is : ',self.model_num_now)
-            self.REINFORCE_model = torch.load(load_my_model(self.model_save_load_path))
-            print('model loading done')
-            time.sleep(5)
-            print('successsuccesssuccesssuccesssuccesssuccesssuccesssuccess')
-        except:
-            print('model loading failed so loaded fresh model')
-            self.REINFORCE_model = ResNet4one(block=BasicBlock4one, num_blocks=[2, 2, 2, 2], num_classes=2, mnst_ver=True)
-            self.model_num_now = 0
-            print('failedfailedfailedfailedfailedfailedfailedfailedfailedfailed')
+        self.REINFORCE_model = ResNet4one(block=BasicBlock4one, num_blocks=[2, 2, 2, 2], num_classes=2, mnst_ver=True)
+        self.model_num_now = 0
+        ####################################MODEL SETTINGG##############################3
 
         ##########################VARS for RL model##################################
         self.loss_lst_trn = []

@@ -15,13 +15,15 @@ if __name__ == '__main__':
     theta_gpu_num = [2]
     rwd_spread = True
     theta_max_epch = 25
-    max_ep = 50
+    max_ep = 5000
+    RL_save_range = 50
     conv_crit_num = 5
     inner_max_step = 11
     wayofdata = 'sum'
     beta4f1 = 100
     noise_ratio = 0.5
     split_ratio = int(5923*0.05)
+
     master_dir = '/home/a286/'
 
     specific_dir_name = mk_name(rwd_spread=rwd_spread,reward_normalize=reward_normalize,noise_ratio=noise_ratio,split_ratio=split_ratio,beta=1)
@@ -35,7 +37,7 @@ if __name__ == '__main__':
                  theta_stop_threshold=theta_stop_threshold,rl_stop_threshold=rl_stop_threshold,test_fle_down_path=test_fle_down_path,
                       trn_fle_down_path=trn_fle_down_path,theta_gpu_num=theta_gpu_num,model_save_load_path=model_save_load_path,rwd_spread=rwd_spread,
                       theta_max_epch=theta_max_epch,max_ep=max_ep,wayofdata=wayofdata,noise_ratio=noise_ratio,split_ratio=split_ratio,
-                      beta4f1=beta4f1,inner_max_step=inner_max_step,conv_crit_num=conv_crit_num)
+                      beta4f1=beta4f1,inner_max_step=inner_max_step,conv_crit_num=conv_crit_num,RL_save_range=RL_save_range)
 
     excute_rl = do_it.excute_RL()
 
