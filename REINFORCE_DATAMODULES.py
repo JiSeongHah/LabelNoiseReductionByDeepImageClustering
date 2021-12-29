@@ -52,7 +52,7 @@ class datamodule_4REINFORCE1(pl.LightningDataModule):
         print('train_dataloading.......')
         train_data = TensorDataset(self.train_inputs, self.train_labels)
         train_sampler = RandomSampler(train_data)
-        train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=self.batch_size, num_workers=8)
+        train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=self.batch_size, num_workers=1)
         print('train_dataloading done....')
 
         return train_dataloader
@@ -61,7 +61,7 @@ class datamodule_4REINFORCE1(pl.LightningDataModule):
         validation_data = TensorDataset(self.val_inputs, self.val_labels)
         validation_sampler = SequentialSampler(validation_data)
         validation_dataloader = DataLoader(validation_data, sampler=validation_sampler, batch_size=self.batch_size_val,
-                                           num_workers=8)
+                                           num_workers=1)
         return validation_dataloader
 
     def test_dataloader(self):
