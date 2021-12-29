@@ -116,9 +116,9 @@ class simple_torch(nn.Module):
 
 
         if num_zero+num_one != 0:
-            reward = num_zero/(num_one+num_zero)
+            reward = float(num_zero/(num_one+num_zero))
         else:
-            reward = 0
+            reward = -0.1
 
         print(f'num_one : {num_one} and num_zero : {num_zero} So, reward is : {reward}')
         done = True
@@ -214,6 +214,8 @@ class simple_torch(nn.Module):
         for log_prob, R in zip(self.policy_saved_log_probs_lst, Returns):
             policy_loss.append(-log_prob * R)
 
+        print(f'policy loss(list) is : {policy_loss}')
+        print(f'Returns(list) is : {Returns}')
         policy_loss = torch.cat(policy_loss).sum()
         self.loss_lst_trn.append(float(policy_loss.item()))
         self.optimizer.zero_grad()
@@ -221,10 +223,10 @@ class simple_torch(nn.Module):
         self.optimizer.step()
         print('gradient optimization done')
 
-        print(f'self.loss_lst_trn is : {self.loss_lst_trn}')
-        print(f'self.total_rwd_lst_trn is : {self.total_reward_lst_trn}')
+        #print(f'self.loss_lst_trn is : {self.loss_lst_trn}')
+        #print(f'self.total_rwd_lst_trn is : {self.total_reward_lst_trn}')
 
-        if training_num % 10 ==0:
+        if training_num % 30 ==0:
             fig = plt.figure()
             ax1 = fig.add_subplot(1, 2, 1)
             ax1.plot(range(len(self.loss_lst_trn)), self.loss_lst_trn)

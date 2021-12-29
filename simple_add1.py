@@ -3,16 +3,16 @@ from excute_simple_rl import excute_simple_rl
 from simple_torch import simple_torch
 
 if __name__ == '__main__':
-    gamma = 0.999
+    gamma = 0.8
     eps = 1e-9
     rl_lr = 4e-06
     rl_b_size = 1
     theta_b_size = 8192
-    reward_normalize = True
+    reward_normalize = False
     theta_stop_threshold = 0.01
     rl_stop_threshold = 0.01
     theta_gpu_num = [0]
-    rwd_spread = True
+    rwd_spread = False
     theta_max_epch = 25
     max_ep = 5000
     RL_save_range = 500
@@ -23,9 +23,10 @@ if __name__ == '__main__':
     noise_ratio = 0
     split_ratio = int(5923*0.05)
     master_dir = '/home/a286winteriscoming/'
-    data_cut_num = int(5923*0.0003)
+    # master_dir = '/home/a286/'
+    data_cut_num = 32
 
-    specific_dir_name = mk_name(test='simple_torch',rwd_spread=rwd_spread,reward_normalize=reward_normalize,data_cut_num=data_cut_num)
+    specific_dir_name = mk_name(test='simple_torch',rwd_spread=rwd_spread,reward_normalize=reward_normalize,data_cut_num=data_cut_num,gmma=gamma)
 
     test_fle_down_path = master_dir+'hjs_dir1/'+specific_dir_name +'/'
     trn_fle_down_path =  master_dir+'hjs_dir1/'+specific_dir_name + '/'

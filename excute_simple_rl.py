@@ -153,5 +153,5 @@ class excute_simple_rl:
             print('                   ')
             print('                   ')
             print('                   ')
-            print(f' reward lst is : {REINFORCE_START.total_reward_lst_trn}')
+            #print(f' reward lst is : {REINFORCE_START.total_reward_lst_trn}')
 
