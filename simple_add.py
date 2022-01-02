@@ -3,12 +3,12 @@ from excute_simple_rl import excute_simple_rl
 from simple_torch import simple_torch
 
 if __name__ == '__main__':
-    gamma = 0.9
+    gamma = 0.999
     eps = 1e-9
     rl_lr = 4e-06
     rl_b_size = 1
     theta_b_size = 8192
-    reward_normalize = False
+    reward_normalize = True
     theta_stop_threshold = 0.01
     rl_stop_threshold = 0.01
     theta_gpu_num = [0]
@@ -24,7 +24,8 @@ if __name__ == '__main__':
     split_ratio = int(5923*0.05)
     master_dir = '/home/a286winteriscoming/'
     # master_dir = '/home/a286/'
-    data_cut_num = 16
+    data_cut_num = 256
+    iter_to_accumul = 10
 
     specific_dir_name = mk_name(test='simple_torch',rwd_spread=rwd_spread,reward_normalize=reward_normalize,data_cut_num=data_cut_num,gmma=gamma)
 
@@ -38,7 +39,7 @@ if __name__ == '__main__':
                       trn_fle_down_path=trn_fle_down_path,theta_gpu_num=theta_gpu_num,model_save_load_path=model_save_load_path,rwd_spread=rwd_spread,
                       theta_max_epch=theta_max_epch,max_ep=max_ep,wayofdata=wayofdata,noise_ratio=noise_ratio,split_ratio=split_ratio,
                       beta4f1=beta4f1,inner_max_step=inner_max_step,conv_crit_num=conv_crit_num,RL_save_range=RL_save_range,
-                             data_cut_num=data_cut_num)
+                             data_cut_num=data_cut_num,iter_to_accumul=iter_to_accumul)
 
     excute_rl = do_it.excute_RL()
 

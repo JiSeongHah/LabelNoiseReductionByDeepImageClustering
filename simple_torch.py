@@ -32,7 +32,7 @@ from save_funcs import load_my_model
 class simple_torch(nn.Module):
     def __init__(self, gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,val_data,val_label,rwd_spread,beta4f1,
                  inner_max_step,theta_stop_threshold,rl_stop_threshold,test_fle_down_path,theta_gpu_num,
-                 model_save_load_path,theta_max_epch,max_ep,conv_crit_num,data_cut_num):
+                 model_save_load_path,theta_max_epch,max_ep,conv_crit_num,data_cut_num,iter_to_accumul):
         super(simple_torch, self).__init__()
 
         self.test_fle_down_path = test_fle_down_path
@@ -65,7 +65,7 @@ class simple_torch(nn.Module):
         self.max_ep = max_ep
         self.beta4f1 = beta4f1
         self.data_cut_num = data_cut_num
-
+        self.iter_to_accumul = iter_to_accumul
 
         self.rwd_spread = rwd_spread
 
@@ -216,11 +216,12 @@ class simple_torch(nn.Module):
 
         print(f'policy loss(list) is : {policy_loss}')
         print(f'Returns(list) is : {Returns}')
-        policy_loss = torch.cat(policy_loss).sum()
+        policy_loss = torch.mean(torch.cat(policy_loss))/self.iter_to_accumul
         self.loss_lst_trn.append(float(policy_loss.item()))
         self.optimizer.zero_grad()
         policy_loss.backward()
-        self.optimizer.step()
+        if (training_num+1)%self.iter_to_accumul == 0:
+            self.optimizer.step()
         print('gradient optimization done')
 
         #print(f'self.loss_lst_trn is : {self.loss_lst_trn}')

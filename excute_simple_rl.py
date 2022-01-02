@@ -8,7 +8,7 @@ class excute_simple_rl:
     def __init__(self,gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,rwd_spread,inner_max_step,
                  theta_stop_threshold,rl_stop_threshold,test_fle_down_path,trn_fle_down_path,beta4f1,
                  theta_gpu_num,model_save_load_path,theta_max_epch,max_ep,wayofdata,noise_ratio,split_ratio,
-                 conv_crit_num,RL_save_range,data_cut_num):
+                 conv_crit_num,RL_save_range,data_cut_num,iter_to_accumul):
 
         ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
         self.rl_b_size = rl_b_size
@@ -30,6 +30,7 @@ class excute_simple_rl:
         self.inner_max_step = inner_max_step
         self.conv_crit_num = conv_crit_num
         self.RL_save_range = RL_save_range
+        self.iter_to_accumul = iter_to_accumul
 
         self.eps = eps
         self.data_cut_num = data_cut_num
@@ -122,7 +123,9 @@ class excute_simple_rl:
                                               theta_max_epch=self.theta_max_epch, max_ep=self.MAX_EP,
                                               beta4f1=self.beta4f1, inner_max_step=self.inner_max_step,
                                               conv_crit_num=self.conv_crit_num,
-                                              data_cut_num=self.data_cut_num)
+                                              data_cut_num=self.data_cut_num,
+                                              iter_to_accumul=self.iter_to_accumul)
+            
             REINFORCE_START.model_num_now = 0
             print('failedfailedfailedfailedfailedfailedfailedfailedfailedfailed')
 
