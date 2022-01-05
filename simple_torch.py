@@ -218,10 +218,12 @@ class simple_torch(nn.Module):
         print(f'Returns(list) is : {Returns}')
         policy_loss = torch.mean(torch.cat(policy_loss))/self.iter_to_accumul
         self.loss_lst_trn.append(float(policy_loss.item()))
-        self.optimizer.zero_grad()
+
         policy_loss.backward()
+
         if (training_num+1)%self.iter_to_accumul == 0:
             self.optimizer.step()
+            self.optimizer.zero_grad()
         print('gradient optimization done')
 
         #print(f'self.loss_lst_trn is : {self.loss_lst_trn}')
