@@ -46,6 +46,7 @@ class simple_torch(nn.Module):
 
         ##########################VARS for RL model##################################
         self.loss_lst_trn = []
+        self.loss_lst_trn_tmp = []
         self.loss_lst_val = []
 
         self.policy_saved_log_probs_lst = []
@@ -54,6 +55,7 @@ class simple_torch(nn.Module):
         self.R_lst_val = []
 
         self.total_reward_lst_trn = []
+        self.total_reward_lst_trn_tmp = []
 
         self.automatic_optimization = False
         self.gamma = gamma
@@ -198,7 +200,7 @@ class simple_torch(nn.Module):
             self.R_lst = self.R_lst[:-1]
             self.R_lst.append(reward)
 
-        self.total_reward_lst_trn.append(reward)
+        self.total_reward_lst_trn_tmp.append(reward)
 
         Return = 0
         policy_loss = []
@@ -217,19 +219,27 @@ class simple_torch(nn.Module):
         print(f'policy loss(list) is : {policy_loss}')
         print(f'Returns(list) is : {Returns}')
         policy_loss = torch.mean(torch.cat(policy_loss))/self.iter_to_accumul
-        self.loss_lst_trn.append(float(policy_loss.item()))
+        self.loss_lst_trn_tmp.append(float(policy_loss.item()))
 
         policy_loss.backward()
 
         if (training_num+1)%self.iter_to_accumul == 0:
             self.optimizer.step()
             self.optimizer.zero_grad()
+            ################# mean of each append to lst for plot###########
+            self.loss_lst_trn.append(np.mean(self.loss_lst_trn_tmp))
+            self.total_reward_lst_trn.append(np.mean(self.total_reward_lst_trn_tmp))
+            ################# mean of each append to lst for plot###########
+            ###########flush#############
+            self.loss_lst_trn_tmp = []
+            self.total_reward_lst_trn_tmp = []
+            ###########flush#############
         print('gradient optimization done')
 
         #print(f'self.loss_lst_trn is : {self.loss_lst_trn}')
         #print(f'self.total_rwd_lst_trn is : {self.total_reward_lst_trn}')
 
-        if training_num % 30 ==0:
+        if (training_num+1)%self.iter_to_accumul == 0:
             fig = plt.figure()
             ax1 = fig.add_subplot(1, 2, 1)
             ax1.plot(range(len(self.loss_lst_trn)), self.loss_lst_trn)

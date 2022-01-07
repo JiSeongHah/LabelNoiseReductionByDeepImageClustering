@@ -23,12 +23,12 @@ if __name__ == '__main__':
     beta4f1 = 100
     noise_ratio = 0
     split_ratio = int(5923 * 0.05)
-    #master_dir = '/home/a286winteriscoming/'
-    master_dir = '/home/a286/'
+    master_dir = '/home/a286winteriscoming/'
+    #master_dir = '/home/a286/'
     data_cut_num = 128
-    iter_to_accumul = 160
+    iter_to_accumul = 80
 
-    specific_dir_name = mk_name(test='simple_torch', rwd_spread=rwd_spread, reward_normalize=reward_normalize,
+    specific_dir_name = mk_name(dir3='/',test='simple_torch', rwd_spread=rwd_spread, reward_normalize=reward_normalize,
                                 data_cut_num=data_cut_num, gmma=gamma,num_accmul=iter_to_accumul)
 
     test_fle_down_path = master_dir + 'hjs_dir1/' + specific_dir_name + '/'
