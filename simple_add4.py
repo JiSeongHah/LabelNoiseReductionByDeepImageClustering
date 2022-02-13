@@ -11,7 +11,7 @@ if __name__ == '__main__':
     reward_normalize = False
     theta_stop_threshold = 0.01
     rl_stop_threshold = 0.01
-    theta_gpu_num = [2]
+    theta_gpu_num = [3]
     rwd_spread = False
     theta_max_epch = 25
     max_ep = 1
@@ -24,8 +24,8 @@ if __name__ == '__main__':
     split_ratio = int(5923*0.05)
     master_dir = '/home/a286winteriscoming/'
     master_dir = '/home/a286/'
-    data_cut_num = 1024
-    rl_b_size = 2048
+    data_cut_num = 2048
+    rl_b_size = 2048*2
     iter_to_accumul = 1
 
     specific_dir_name = mk_name(dir3='/',test='simple_torch2',rwd_spread=rwd_spread,reward_normalize=reward_normalize,data_cut_num=data_cut_num,gmma=gamma,num_accmul=iter_to_accumul)
