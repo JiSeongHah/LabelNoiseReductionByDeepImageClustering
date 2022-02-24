@@ -85,27 +85,48 @@
 #
 #
 #
-import csv
+# import csv
+# 
+# dir1 = '/home/emeraldsword1423/final_final_submission/FOCALLOSS_WEIGHTVER_w0.05_test123123test123123model_nameunet_n_blocks6_ngf32_.csv'
+# dir2 = '/home/emeraldsword1423/final_final_submission/2021311627.csv'
+# 
+# with open(dir1,'r') as f:
+#     lst1 = f.readlines()
+# 
+# with open(dir2,'r') as f:
+#     lst2 = f.readlines()
+# 
+# 
+# yes_count = 0
+# no_count = 0
+# 
+# for i in range(len(lst1)):
+#     if lst1[i] ==lst2[i]:
+#         yes_count+=1
+#         print('yes')
+#     else:
+#         no_count += 1
+#         print('no')
+# 
+# print(yes_count,no_count)
 
-dir1 = '/home/emeraldsword1423/final_final_submission/FOCALLOSS_WEIGHTVER_w0.05_test123123test123123model_nameunet_n_blocks6_ngf32_.csv'
-dir2 = '/home/emeraldsword1423/final_final_submission/2021311627.csv'
-
-with open(dir1,'r') as f:
-    lst1 = f.readlines()
-
-with open(dir2,'r') as f:
-    lst2 = f.readlines()
+import os
 
 
-yes_count = 0
-no_count = 0
+rootPath = '/home/a286/winteris'
 
-for i in range(len(lst1)):
-    if lst1[i] ==lst2[i]:
-        yes_count+=1
-        print('yes')
-    else:
-        no_count += 1
-        print('no')
+eachFolderLst = os.listdir(rootPath)
 
-print(yes_count,no_count)
+notRemoveLst = [str(10000*i)+'.pth' for i in range(1000)] + ['Result.png','sample_submission.csv']
+
+for eachFolder in eachFolderLst:
+    fullEachFolder = rootPath+eachFolder+'/'
+    eachFileLst = os.listdir(fullEachFolder)
+    if len(eachFileLst) == 0:
+        os.rmdir(fullEachFolder)
+        print(f'{fullEachFolder} removed because it is empty')
+    for eachFile in eachFileLst:
+        fullEachFilePath = fullEachFolder + eachFile
+        if eachFile not in notRemoveLst:
+            os.remove(fullEachFilePath)
+            print(f'{fullEachFilePath} removed')

@@ -10,7 +10,7 @@ from save_funcs import mk_name,lst2csv
 import matplotlib.pyplot as plt
 
 class Prediction_lit_4REINFORCE1(pl.LightningModule):
-    def __init__(self,save_dir,save_range,stop_threshold,beta4f1=100):
+    def __init__(self,save_dir,save_range,beta4f1=100):
         super().__init__()
 
         # self.model = CNN()
@@ -24,7 +24,7 @@ class Prediction_lit_4REINFORCE1(pl.LightningModule):
 
         self.save_dir = save_dir
 
-        self.stop_threshold = stop_threshold
+
         self.beta4f1 = beta4f1
 
         self.loss_lst_trn = []

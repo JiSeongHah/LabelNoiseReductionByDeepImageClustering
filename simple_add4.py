@@ -15,7 +15,7 @@ if __name__ == '__main__':
     rwd_spread = False
     theta_max_epch = 25
     max_ep = 1
-    RL_save_range = 500
+    RL_save_range = 10000
     conv_crit_num = 5
     inner_max_step = 11
     wayofdata = 'sum'
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     rl_b_size = 2048*2
     iter_to_accumul = 1
 
-    specific_dir_name = mk_name(dir3='/',test='simple_torch2',rwd_spread=rwd_spread,reward_normalize=reward_normalize,data_cut_num=data_cut_num,gmma=gamma,num_accmul=iter_to_accumul)
+    specific_dir_name = mk_name(dir3='/',test='simple_torch2',rwd='minuseachotherscaleVer3',rwd_spread=rwd_spread,reward_normalize=reward_normalize,data_cut_num=data_cut_num,gmma=gamma,num_accmul=iter_to_accumul)
 
     test_fle_down_path = master_dir+'hjs_dir1/'+specific_dir_name +'/'
     trn_fle_down_path =  master_dir+'hjs_dir1/'+specific_dir_name + '/'

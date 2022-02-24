@@ -1,14 +1,37 @@
 import torch
 from torchvision.datasets import MNIST
 from MK_NOISED_DATA import mk_noisy_data
-from REINFORCE_TORCH import REINFORCE_TORCH
+from REINFORCE_TORCH2 import REINFORCE_TORCH
 from save_funcs import load_my_model
+import numpy as np
 
 class EXCUTE_RL:
-    def __init__(self,gamma,eps,rl_lr,rl_b_size,theta_b_size,reward_normalize,rwd_spread,inner_max_step,
-                 theta_stop_threshold,rl_stop_threshold,test_fle_down_path,trn_fle_down_path,beta4f1,
-                 theta_gpu_num,model_save_load_path,theta_max_epch,max_ep,wayofdata,noise_ratio,split_ratio,
-                 conv_crit_num,RL_save_range):
+    def __init__(self,
+                 gamma,
+                 eps,
+                 rl_lr,
+                 rl_b_size,
+                 theta_b_size,
+                 reward_normalize,
+                 rwd_spread,
+                 inner_max_step,
+                 theta_stop_threshold,
+                 rl_stop_threshold,
+                 test_fle_down_path,
+                 trn_fle_down_path,
+                 beta4f1,
+                 theta_gpu_num,
+                 model_save_load_path,
+                 theta_max_epch,
+                 max_ep,
+                 wayofdata,
+                 WINDOW,
+                 noise_ratio,
+                 split_ratio,
+                 INNER_MAX_STEP,
+                 reward_method,
+                 conv_crit_num,
+                 RL_save_range):
 
         ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
         self.rl_b_size = rl_b_size
@@ -21,6 +44,8 @@ class EXCUTE_RL:
         self.model_save_load_path = model_save_load_path
         self.theta_gpu_num = theta_gpu_num
 
+        self.WINDOW =WINDOW
+
         self.MAX_EP = max_ep
         self.theta_max_epch = theta_max_epch
         self.theta_stop_threshold = theta_stop_threshold
@@ -32,6 +57,8 @@ class EXCUTE_RL:
         self.RL_save_range = RL_save_range
 
         self.eps = eps
+        self.INNER_MAX_STEP = INNER_MAX_STEP
+        self.reward_method = reward_method
 
         ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
         self.noise_ratio = noise_ratio
@@ -91,7 +118,6 @@ class EXCUTE_RL:
         del RL_train_data
         del RL_val_dataset
 
-
         print('valid_dataloading done....')
 
         try:
@@ -109,17 +135,27 @@ class EXCUTE_RL:
             print('successsuccesssuccesssuccesssuccesssuccesssuccesssuccess')
         except:
             print('model loading failed so loaded fresh model')
-            REINFORCE_START = REINFORCE_TORCH(gamma=self.gamma, eps=self.eps, rl_lr=self.rl_lr,
-                                              rl_b_size=self.rl_b_size, theta_b_size=self.theta_b_size,
-                                              reward_normalize=self.reward_normalize, val_data=RL_val_inputs,
+            REINFORCE_START = REINFORCE_TORCH(gamma=self.gamma,
+                                              eps=self.eps,
+                                              rl_lr=self.rl_lr,
+                                              rl_b_size=self.rl_b_size,
+                                              theta_b_size=self.theta_b_size,
+                                              reward_normalize=self.reward_normalize,
+                                              val_data=RL_val_inputs,
                                               val_label=RL_val_labels,
                                               theta_stop_threshold=self.theta_stop_threshold,
                                               rl_stop_threshold=self.rl_stop_threshold,
                                               test_fle_down_path=self.test_fle_down_path,
-                                              theta_gpu_num=self.theta_gpu_num, rwd_spread=self.rwd_spread,
+                                              theta_gpu_num=self.theta_gpu_num,
+                                              rwd_spread=self.rwd_spread,
                                               model_save_load_path=self.model_save_load_path,
-                                              theta_max_epch=self.theta_max_epch, max_ep=self.MAX_EP,
-                                              beta4f1=self.beta4f1, inner_max_step=self.inner_max_step,
+                                              theta_max_epch=self.theta_max_epch,
+                                              max_ep=self.MAX_EP,
+                                              beta4f1=self.beta4f1,
+                                              WINDOW = self.WINDOW,
+                                              INNER_MAX_STEP=self.INNER_MAX_STEP,
+                                              reward_method=self.reward_method,
+                                              inner_max_step=self.inner_max_step,
                                               conv_crit_num=self.conv_crit_num)
             REINFORCE_START.model_num_now = 0
             print('failedfailedfailedfailedfailedfailedfailedfailedfailedfailed')
@@ -130,6 +166,8 @@ class EXCUTE_RL:
 
             REINFORCE_START.training_step(RL_td_zero=RL_train_data_zero_little, RL_tl_zero=RL_train_label_zero_little,
                                           RL_td_rest=RL_train_data_rest, RL_tl_rest=RL_train_label_rest, training_num=i)
+            REINFORCE_START.validation_step(RL_td_zero=RL_train_data_zero_little, RL_tl_zero=RL_train_label_zero_little,
+                                          RL_td_rest=RL_train_data_rest, RL_tl_rest=RL_train_label_rest, valNum=i)
             if i%self.RL_save_range ==0 and i!=0:
                 try:
                     print(f'REINFORCE_START.model_num_now is : {REINFORCE_START.model_num_now}')
@@ -142,6 +180,8 @@ class EXCUTE_RL:
                     print('saving RL model complete')
                 except:
                     print('saving model failed')
+            if np.mean(REINFORCE_START.loss_lst_trn[-10:]) < 0.01:
+                break
             print(f'{i} th training for RL done')
             print('                   ')
             print('                   ')

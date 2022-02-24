@@ -180,7 +180,7 @@ class REINFORCE_TORCH(nn.Module):
             ax8.plot(range(len(theta_model_part.avg_acc_lst_val_f1score)), theta_model_part.avg_acc_lst_val_f1score)
             ax8.set_title('val F1 SCORE')
 
-            plt.savefig(self.test_fle_down_path + 'inner_model_result.png', dpi=400)
+            plt.savefig(self.test_fle_down_path + 'inner_model_result.png', dpi=200)
             print('saving plot complete!')
             plt.close()
 
@@ -321,10 +321,9 @@ class REINFORCE_TORCH(nn.Module):
 
 
         print(f'self.test_fle_down_path is : {self.test_fle_down_path}testplot.png')
-        plt.savefig(self.test_fle_down_path+'RL_reward_plot.png', dpi=400)
+        plt.savefig(self.test_fle_down_path+'RL_reward_plot.png', dpi=200)
         print('saving plot complete!')
         plt.close()
-
 
         good_data_lst = []
         good_label_lst = []

@@ -127,7 +127,7 @@ class excute_simple_rl2:
             REINFORCE_START.model_num_now = 0
             print('failedfailedfailedfailedfailedfailedfailedfailedfailedfailed')
 
-        for i in range(100000):
+        for i in range(10000000):
             print(f'{i} th training RL start')
 
             REINFORCE_START.training_step(RL_td_zero=RL_train_data_zero_little, RL_tl_zero=RL_train_label_zero_little,
