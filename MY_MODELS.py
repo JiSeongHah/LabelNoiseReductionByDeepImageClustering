@@ -315,3 +315,57 @@ class ResNet4one(nn.Module):
         out = self.linear(out)
 
         return out
+
+
+class ganGenerator1(torch.nn.Module):
+
+    def __init__(self,dNoise,dHidden):
+        super(ganGenerator1, self).__init__()
+
+        self.dNoise = dNoise
+        self.dHidden = dHidden
+
+        self.G = nn.Sequential(
+            nn.Linear(self.dNoise, self.dHidden),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(self.dHidden,self.dHidden),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(self.dHidden, 28*28),
+            nn.Tanh()
+        )
+
+    def forward(self, x):
+
+        out = self.G(x)
+        out = out.view(-1,1,28,28)
+
+        return out
+
+
+class ganDiscriminator1(torch.nn.Module):
+
+    def __init__(self, dHidden):
+        super(ganDiscriminator1, self).__init__()
+
+        self.dHidden = dHidden
+
+        self.D = nn.Sequential(
+                nn.Linear(28*28, self.dHidden),
+                nn.LeakyReLU(),
+                nn.Dropout(0.1),
+                nn.Linear(self.dHidden, self.dHidden),
+                nn.LeakyReLU(),
+                nn.Dropout(0.1),
+                nn.Linear(self.dHidden, 1),
+                nn.Sigmoid()
+            )
+
+    def forward(self, x):
+
+        x = x.view(-1,28*28)
+        out = self.D(x)
+
+        return out
+

@@ -367,6 +367,9 @@ class REINFORCE_TORCH(nn.Module):
 
     def validation_step(self, RL_td_zero,RL_tl_zero,RL_td_rest,RL_tl_rest,valNum):
 
+        RL_td_rest = torch.from_numpy(RL_td_rest).unsqueeze(1)
+        RL_tl_rest = torch.ones_like(torch.from_numpy(RL_tl_rest))
+
 
         LowLst = [5*i/100 for i in range(16)]
 
@@ -404,34 +407,73 @@ class REINFORCE_TORCH(nn.Module):
 
         rewardCriterion = val_model_part_BASE.avg_acc_lst_val_f1score[-1]
 
-        del val_model_part_total
-        del dm4Total
-        del trainer_part4Total
+        del val_model_part_BASE
+        del dm4BASE
+        del trainer_part4BASE
         del data4Criterion
         del label4Criterion
 
-        val_data = TensorDataset(RL_td_zero)
+
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+        print('----------------------------------------')
+
+        val_data = TensorDataset(RL_td_zero,RL_tl_zero)
         val_dataloader = DataLoader(val_data, shuffle=False, batch_size=self.rl_b_size, num_workers=4)
 
-        datavalueTensor = 0
+
 
         with torch.set_grad_enabled(False):
 
-            for inputVal in val_dataloader:
+            for idx,(inputVal,_) in enumerate(val_dataloader):
 
                 dataValueBatch = self.forward(inputVal)[:,1]
 
-                if datavalueTensor == 0:
+                print(f'size of dataValueBatch.size() is : {dataValueBatch.size()}')
+
+
+                if idx == 0:
                     datavalueTensor = dataValueBatch.clone().detach()
                 else:
                     datavalueTensor = torch.cat((datavalueTensor,dataValueBatch.clone().detach()),dim=0)
 
 
+
+        print(f'datavalueTensor.size() is : {datavalueTensor.size()}')
+
+
+
         for Low in LowLst:
 
-            lowRemovedTensor = torch.ge(datavalueTensor,Low).int()
+            lowRemovedTensor = torch.ge(datavalueTensor,Low)
+
+            print(f'min of datavalue is : {torch.min(datavalueTensor)}')
+
+            print(f'lowRemovedTensor is : {lowRemovedTensor}')
+            print(f'size of lowRemovedTensor is : {lowRemovedTensor.size()}')
             newTdZero = RL_td_zero[lowRemovedTensor]
             newTlZero = RL_tl_zero[lowRemovedTensor]
+
+            print(f'size of newTdZero is : {newTdZero.size()}')
+            print(f'size of newTlZero is : {newTlZero.size()}')
 
             data4DVRL = torch.cat((RL_td_rest,newTdZero),dim=0)
             label4DVRL = torch.cat((RL_tl_rest,newTlZero),dim=0)
@@ -463,16 +505,17 @@ class REINFORCE_TORCH(nn.Module):
             criterionResultLst.append(rewardCriterion)
             dvrlResultLst.append(rewardDVRL)
 
-            plt.plot(range(len(dvrlResultLst)),dvrlResultLst,'r')
-            plt.plot(range(len(criterionResultLst)), criterionResultLst,'b')
-            plt.savefig(self.test_fle_down_path+'rewardDiffwithLow_'+str(Low)+'.png',dpi=200)
-            print(f'saving plot for {Low} with innnerStep : {self.INNER_MAX_STEP} for {valNum} done')
+        plt.plot(LowLst,dvrlResultLst,'r')
+        plt.plot(LowLst, criterionResultLst,'b')
+        plt.savefig(self.test_fle_down_path+'rewardDiffwithLow'+'.png',dpi=200)
+        print(f'saving plot for innnerStep : {self.INNER_MAX_STEP} for {valNum} done')
+        plt.close()
+
 
         del data4DVRL
         del label4DVRL
         del val_model_part_DVRL
         del dm4DVRL
         del trainer_part4DVRL
-
 
         return

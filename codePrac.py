@@ -7,56 +7,51 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from torchvision.datasets import MNIST
 from MK_NOISED_DATA import mk_noisy_data
+import torch.nn as nn
+import numpy as np
+from matplotlib import pyplot as plt
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision.utils as utils
+import torchvision.datasets as dsets
+import torchvision.transforms as transforms
 
+def imshow(img):
+    img = (img+1)/2
+    img = img.squeeze()
+    np_img = img.numpy()
+    plt.imshow(np_img, cmap='gray')
+    plt.show()
 
-# dir1= '/home/a286/hjs_dir1/dir5/'
-# dir2=  '/home/a286/hjs_dir1/dir6/'
-#
-#
-# DirLst = os.listdir(dir1)
-#
-# for eachDir in DirLst:
-#     createDirectory(dir2+eachDir)
-#     shutil.copy(dir1+eachDir+'/RL_reward_plot.png',dir2+eachDir+'/RL_reward_plot.png')
-#     print(f'{dir1+eachDir+"/RL_reward_plot.png"} copy done')
+def imshow_grid(img):
+    img = utils.make_grid(img.cpu().detach())
+    img = (img+1)/2
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1,2,0)))
+    plt.show()
+d_noise  = 100
+d_hidden = 256
 
-# RL_train_dataset = MNIST('~/', train=True, download=True)
-#
-# RL_train_data = RL_train_dataset.data.numpy()
-# RL_train_label = RL_train_dataset.targets.numpy()
-#
-# RL_train_label_zero = RL_train_label[RL_train_label == 0]
-# RL_train_label_rest = RL_train_label[RL_train_label != 0]
-#
-# RL_train_data_zero = RL_train_data[RL_train_label == 0]
-# RL_train_data_rest = RL_train_data[RL_train_label != 0]
-#
-#
-#
-# noise_ratio = 5
-# split_ratio = int(5923*0.05)
-#
-#
-# RL_train_data_zero_little = torch.from_numpy(mk_noisy_data(raw_data=RL_train_data_zero, noise_ratio=noise_ratio,
-#                                       split_ratio=split_ratio, way='sum')).unsqueeze(1)
-# RL_train_label_zero_little = torch.from_numpy(RL_train_label_zero[:])
-#
-#
-# for i in range(30):
-#     plt.imshow(np.squeeze(RL_train_data_zero_little[i+split_ratio,:,:],axis=0))
-#     plt.savefig('/home/a286winteriscoming/dir7/'+str(i)+'.png')
+def sample_z(batch_size = 1, d_noise=100):
+    return torch.randn(batch_size, d_noise)
 
+G = nn.Sequential(
+    nn.Linear(d_noise, d_hidden),
+    nn.ReLU(),
+    nn.Dropout(0.1),
+    nn.Linear(d_hidden,d_hidden),
+    nn.ReLU(),
+    nn.Dropout(0.1),
+    nn.Linear(d_hidden, 28*28),
+    nn.Tanh()
+)
 
-x = torch.zeros(3)
-y = torch.ones(5)
-z = torch.zeros(4)
+# 노이즈 생성하기
+z = sample_z(batch_size=10)
+# 가짜 이미지 생성하기
+img_fake = G(z).view(-1,1,28,28)
+print(img_fake.size())
+# 이미지 출력하기
+imshow_grid(img_fake.cpu().detach())
 
-
-xxx = torch.cat((x,y),dim=0)
-
-print(xxx.size())
-print(xxx)
-
-LowLst = [5*i/100 for i in range(16)]
-
-print(LowLst)
