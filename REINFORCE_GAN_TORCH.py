@@ -55,23 +55,48 @@ class REINFORCE_GAN_TORCH(nn.Module):
                  rl_stop_threshold,
                  test_fle_down_path,
                  model_save_load_path,
+                 model_save_load_pathG,
+                 model_save_load_pathGbase,
+                 model_save_load_pathD,
+                 model_save_load_pathDVRL,
+                 GLoadNum,
+                 GbaseLoadNum,
+                 DLoadNum,
+                 DvrlLoadNum,
                  max_step_trn,
                  max_step_val,
-
+                 whichGanLoss,
                  reward_method,
+                 lsganA= 0,
+                 lsganB = 1,
+                 lsganC = 1,
                  ):
         super(REINFORCE_GAN_TORCH, self).__init__()
 
         self.test_fle_down_path = test_fle_down_path
         self.model_save_load_path = model_save_load_path
+        self.model_save_load_pathG = model_save_load_pathG
+        self.model_save_load_pathGbase = model_save_load_pathGbase
+        self.model_save_load_pathD = model_save_load_pathD
+        self.model_save_load_pathDVRL =model_save_load_pathDVRL
+
+        self.GLoadNum = GLoadNum
+        print('self.GLoadNum is :',self.GLoadNum)
+        self.GbaseLoadNum = GbaseLoadNum
+        self.DLoadNum = DLoadNum
+        self.DvrlLoadNum = DvrlLoadNum
 
         self.dNoise = dNoise
         self.dHidden = dHidden
+        self.whichGanLoss = whichGanLoss
+        self.lsganA = lsganA
+        self.lsganB =lsganB
+        self.lsganC =lsganC
 
         ####################################MODEL SETTINGG##############################3
 
         self.REINFORCE_GAN_G = ganGenerator1(dNoise=self.dNoise,dHidden=self.dHidden)
-        self.REINFORCE_GAN_G_BASE = copy.deepcopy(self.REINFORCE_GAN_G)
+        self.REINFORCE_GAN_GBASE = copy.deepcopy(self.REINFORCE_GAN_G)
         self.REINFORCE_GAN_D = ganDiscriminator1(dHidden=self.dHidden)
         self.REINFORCE_DVRL = ResNet4one(block=BasicBlock4one, num_blocks=[2, 2, 2, 2], num_classes=2, mnst_ver=True)
         self.model_num_now = 0
@@ -113,7 +138,6 @@ class REINFORCE_GAN_TORCH(nn.Module):
         self.ProbFakeLst = []
         self.ProbRealLst = []
 
-
         ########################do validation dataset change##########################
         self.val_label_zero = val_label[val_label == 0]
         self.val_label_rest = val_label[val_label != 0]
@@ -145,8 +169,6 @@ class REINFORCE_GAN_TORCH(nn.Module):
         ##########################VARS for RL model##################################
 
 
-
-
         test_dataset = MNIST(self.test_fle_down_path, train=False, download=True)
 
     def forward(self, x):
@@ -154,6 +176,42 @@ class REINFORCE_GAN_TORCH(nn.Module):
         GeneratedImages = self.REINFORCE_GAN_G(x)
 
         return GeneratedImages
+
+    def loadSavedModel(self):
+        try:
+
+            self.REINFORCE_GAN_G.load_state_dict(torch.load(self.model_save_load_pathG+str(self.GLoadNum)+'.pt'))
+            print(f'model GAN G loading {str(self.GLoadNum)} success')
+        except:
+            print(f'model GAN G loading failed... start with fresh model')
+        try:
+
+            self.REINFORCE_GAN_GBASE.load_state_dict(torch.load(self.model_save_load_pathGbase+str(self.GbaseLoadNum)+'.pt'))
+            print(f'model GAN BASE loading {self.GbaseLoadNum} success')
+        except:
+            print(f'model GAN G base loading failed... start with fresh model')
+        try:
+
+            self.REINFORCE_GAN_D.load_state_dict(torch.load(self.model_save_load_pathD+str(self.DLoadNum)+'.pt'))
+            print(f'model D loading {self.DLoadNum} success')
+        except:
+            print(f'model GAN D loading failed... start with fresh model')
+        try:
+            self.REINFORCE_DVRL.load_state_dict(torch.load(self.model_save_load_pathDVRL+str(self.DvrlLoadNum)+'.pt'))
+            print(f'model DVRL loading {self.DvrlLoadNum} success')
+        except:
+            print(f'model DVRL loading failed... start with fresh model')
+
+    def updateVars(self,**vars):
+
+        for var,value in vars.items():
+            if hasattr(self,var):
+                print(f'{var} exist!!')
+                print(f'value of {var} before update is {getattr(self, var)}')
+                setattr(self,var,value)
+                print(f'value of {var} after update is {getattr(self, var)}')
+            else:
+                print(f'{var} doesnt exist !!')
 
     def get_gaussianNoise_z(self,BSize):
 
@@ -191,104 +249,129 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
         return action_prob * reward
 
-    def GAN_LOSS(self,GorD,p_fake,p_real=None):
+    def GAN_LOSS(self,GorD,p_fake,p_real=None,):
+        
+        if self.whichGanLoss == 'vanilla':
 
-        if GorD == 'D':
-            lossFake = -1 * torch.log(1.0 - p_fake)
-            lossReal = -1 * torch.log(p_real)
+            if GorD == 'D':
+                lossFake = -1 * torch.log(1.0 - p_fake)
+                lossReal = -1 * torch.log(p_real)
+    
+                lossD = (lossReal+lossFake).mean()
+    
+                return lossD
+            if GorD == 'G':
+                lossG = -1 * torch.log(p_fake).mean()
+    
+                return lossG
+            
+        if self.whichGanLoss == 'lsgan':
 
-            lossD = (lossReal+lossFake).mean()
+            if GorD == 'D':
+                lossFake = 0.5 * torch.mean(torch.square(p_fake-self.lsganA))
+                lossReal = 0.5 * torch.mean(torch.square(p_real-self.lsganB))
 
-            return lossD
-        if GorD == 'G':
-            lossG = -1 * torch.log(p_fake).mean()
+                lossD = (lossReal + lossFake).mean()
 
-            return lossG
+                return lossD
+            if GorD == 'G':
+                lossG = 0.5 * torch.mean(torch.square(p_fake-self.lsganC))
+
+                return lossG
 
     def training_step(self, td2gen, tl2gen):
 
         self.REINFORCE_GAN_G.train()
         self.REINFORCE_GAN_D.train()
-        self.REINFORCE_GAN_G_BASE.train()
+        self.REINFORCE_GAN_GBASE.train()
 
-        train_data = TensorDataset(td2gen, tl2gen)
-        train_sampler = RandomSampler(train_data)
-        train_dataloader = DataLoader(train_data,
-                                      sampler=train_sampler,
-                                      batch_size=self.gan_trn_bSize,
-                                      num_workers=1)
+        with torch.set_grad_enabled(True):
 
-        for idx,(bInput, bLabel) in enumerate(train_dataloader):
 
-            bInput = bInput.float()
+            train_data = TensorDataset(td2gen, tl2gen)
+            train_sampler = RandomSampler(train_data)
+            train_dataloader = DataLoader(train_data,
+                                          sampler=train_sampler,
+                                          batch_size=self.gan_trn_bSize,
+                                          num_workers=1)
 
-            self.optimizerG.zero_grad()
-            self.optimizerD.zero_grad()
+            print(f'total data size is : {len(td2gen)}')
 
-            noiseZ = self.get_gaussianNoise_z(bInput.size(0))
+            for idx,(bInput, bLabel) in enumerate(train_dataloader):
 
-            p_real = self.REINFORCE_GAN_D(bInput)
-            p_fake = self.REINFORCE_GAN_D(self.REINFORCE_GAN_G(noiseZ))
+                bInput = bInput.float()
 
-            lossD = self.GAN_LOSS(p_fake=p_fake,p_real=p_real,GorD='D')
-            lossD.backward()
-            self.optimizerD.step()
+                self.optimizerG.zero_grad()
+                self.optimizerD.zero_grad()
 
-            noiseZ = self.get_gaussianNoise_z(bInput.size(0))
-            p_fake = self.REINFORCE_GAN_D(self.REINFORCE_GAN_G(noiseZ))
+                noiseZ = self.get_gaussianNoise_z(bInput.size(0))
 
-            self.optimizerG.zero_grad()
-            lossG = self.GAN_LOSS(p_fake=p_fake,GorD='G')
-            lossG.backward()
-            self.optimizerG.step()
+                p_real = self.REINFORCE_GAN_D(bInput)
+                p_fake = self.REINFORCE_GAN_D(self.REINFORCE_GAN_G(noiseZ))
 
+                lossD = self.GAN_LOSS(p_fake=p_fake,p_real=p_real,GorD='D')
+                lossD.backward()
+                self.optimizerD.step()
+
+                noiseZ = self.get_gaussianNoise_z(bInput.size(0))
+                p_fake = self.REINFORCE_GAN_D(self.REINFORCE_GAN_G(noiseZ))
+
+                self.optimizerG.zero_grad()
+                lossG = self.GAN_LOSS(p_fake=p_fake,GorD='G')
+                lossG.backward()
+                self.optimizerG.step()
+
+        torch.set_grad_enabled(False)
         self.REINFORCE_GAN_G.eval()
         self.REINFORCE_GAN_D.eval()
-        self.REINFORCE_GAN_G_BASE.eval()
+        self.REINFORCE_GAN_GBASE.eval()
 
     def validation_step(self, vd2gen,vl2gen):
 
         self.REINFORCE_GAN_G.eval()
         self.REINFORCE_GAN_D.eval()
-        self.REINFORCE_GAN_G_BASE.eval()
+        self.REINFORCE_GAN_GBASE.eval()
 
-        val_data = TensorDataset(vd2gen, vl2gen)
-        validation_dataloader = DataLoader(val_data,
-                                      shuffle=False,
-                                      batch_size=self.gan_val_bSize,
-                                      num_workers=1)
-
-        for idx, (bInput, bLabel) in enumerate(validation_dataloader):
-            bInput = bInput.float()
-            self.optimizerG.zero_grad()
-            self.optimizerD.zero_grad()
-
-            noiseZ = self.get_gaussianNoise_z(bInput.size(0))
-
-            p_real = self.REINFORCE_GAN_D(bInput)
-            p_fake = self.REINFORCE_GAN_D(self.REINFORCE_GAN_G(noiseZ))
-
-            lossD = self.GAN_LOSS(p_fake=p_fake, p_real=p_real, GorD='D')
-            lossG = self.GAN_LOSS(p_fake=p_fake,GorD='G')
-
-            self.lossLstLossD.append(lossD.item())
-            self.lossLstLossG.append(lossG.item())
-            self.ProbRealLst.append(torch.mean(p_real).item())
-            self.ProbFakeLst.append(torch.mean(p_fake).item())
-            print(f'{idx}/{len(validation_dataloader)} done with'
-                  f'lossD : {lossD} and lossG : {lossG}'
-                  f'p_real: {torch.mean(p_real).item()} and p_fake: {torch.mean(p_fake).item()}')
+        with torch.set_grad_enabled(False):
 
 
-            self.imshow_grid(self.REINFORCE_GAN_G(noiseZ).cpu().clone().detach().view(-1, 1, 28, 28),
-                             saveDir=self.model_save_load_path,
-                             showNum=idx
-                             )
+            val_data = TensorDataset(vd2gen, vl2gen)
+            validation_dataloader = DataLoader(val_data,
+                                          shuffle=False,
+                                          batch_size=self.gan_val_bSize,
+                                          num_workers=1)
+
+            for idx, (bInput, bLabel) in enumerate(validation_dataloader):
+                bInput = bInput.float()
+                self.optimizerG.zero_grad()
+                self.optimizerD.zero_grad()
+
+                noiseZ = self.get_gaussianNoise_z(bInput.size(0))
+
+                p_real = self.REINFORCE_GAN_D(bInput)
+                p_fake = self.REINFORCE_GAN_D(self.REINFORCE_GAN_G(noiseZ))
+
+                lossD = self.GAN_LOSS(p_fake=p_fake, p_real=p_real, GorD='D')
+                lossG = self.GAN_LOSS(p_fake=p_fake,GorD='G')
+
+                self.lossLstLossD.append(lossD.item())
+                self.lossLstLossG.append(lossG.item())
+                self.ProbRealLst.append(torch.mean(p_real).item())
+                self.ProbFakeLst.append(torch.mean(p_fake).item())
+                print(f'{idx}/{len(validation_dataloader)} done with'
+                      f'lossD : {lossD} and lossG : {lossG}'
+                      f'p_real: {torch.mean(p_real).item()} and p_fake: {torch.mean(p_fake).item()}')
 
 
+                self.imshow_grid(self.REINFORCE_GAN_G(noiseZ).cpu().clone().detach().view(-1, 1, 28, 28),
+                                 saveDir=self.model_save_load_path,
+                                 showNum=idx
+                                 )
+
+        torch.set_grad_enabled(True)
         self.REINFORCE_GAN_G.train()
         self.REINFORCE_GAN_D.train()
-        self.REINFORCE_GAN_G_BASE.train()
+        self.REINFORCE_GAN_GBASE.train()
 
 
     def STARTTRNANDVAL(self,data,label):

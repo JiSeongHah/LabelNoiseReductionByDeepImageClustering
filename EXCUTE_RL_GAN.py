@@ -2,7 +2,7 @@ import torch
 from torchvision.datasets import MNIST
 from MK_NOISED_DATA import mk_noisy_data
 from REINFORCE_GAN_TORCH import REINFORCE_GAN_TORCH
-from save_funcs import load_my_model
+from save_funcs import load_my_model ,createDirectory
 import numpy as np
 
 
@@ -35,6 +35,11 @@ class EXCUTE_RL_GAN():
                  max_step_trn,
                  max_step_val,
                  reward_method,
+                 whichGanLoss,
+                 GLoadNum,
+                 GbaseLoadNum,
+                 DLoadNum,
+                 DVRLLoadNum,
                  ):
 
         ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
@@ -46,6 +51,19 @@ class EXCUTE_RL_GAN():
 
         self.test_fle_down_path = test_fle_down_path
         self.model_save_load_path = model_save_load_path
+        self.model_save_load_pathG = self.model_save_load_path + 'MODEL_GAN_G/'
+        createDirectory(self.model_save_load_pathG)
+        self.model_save_load_pathD = self.model_save_load_path + 'MODEL_GAN_D/'
+        createDirectory(self.model_save_load_pathD)
+        self.model_save_load_pathGbase = self.model_save_load_path + 'MODEL_GAN_GBASE/'
+        createDirectory(self.model_save_load_pathGbase)
+        self.model_save_load_pathDVRL = self.model_save_load_path + 'MODEL_DVRL/'
+        createDirectory(self.model_save_load_pathDVRL)
+        self.GLoadNum = GLoadNum
+        self.GbaseLoadNum = GbaseLoadNum
+        self.DLoadNum = DLoadNum
+        self.DvrlLoadNum = DVRLLoadNum
+
         self.theta_gpu_num = theta_gpu_num
 
         self.MAX_EP = max_ep
@@ -65,6 +83,7 @@ class EXCUTE_RL_GAN():
         self.gan_val_bSize = gan_val_bSize
         self.dNoise = dNoise
         self.dHidden = dHidden
+        self.whichGanLoss = whichGanLoss
 
         ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
         self.noise_ratio = noise_ratio
@@ -74,7 +93,7 @@ class EXCUTE_RL_GAN():
         ####################################VARS FOR CLASS : EXCUTE_RL ############################
 
 
-    def excute_RL(self):
+    def excute_RL(self,**vars):
 
         RL_train_dataset = MNIST(self.trn_fle_down_path, train=True, download=True)
         RL_val_dataset = MNIST(self.trn_fle_down_path, train=False, download=True)
@@ -134,8 +153,11 @@ class EXCUTE_RL_GAN():
 
             REINFORCE_START = torch.load(load_my_model(self.model_save_load_path))
             REINFORCE_START.model_num_now = self.model_num_now
+            REINFORCE_START.updateVars(**vars)
+            REINFORCE_START.loadSavedModel()
             print(f'REINFORCE_START.model_num_now is : {REINFORCE_START.model_num_now}')
             print(f'len of REINFORCE_START.total_reward_lst_trn : {len(REINFORCE_START.total_reward_lst_trn)}')
+
             print('model loading doneeeeeeeeeeeeee')
             #time.sleep(5)
             print('successsuccesssuccesssuccesssuccesssuccesssuccesssuccess')
@@ -157,12 +179,22 @@ class EXCUTE_RL_GAN():
                                                  rl_stop_threshold=self.rl_stop_threshold,
                                                  test_fle_down_path=self.test_fle_down_path,
                                                  model_save_load_path=self.model_save_load_path,
+                                                 model_save_load_pathG = self.model_save_load_pathG,
+                                                 model_save_load_pathGbase = self.model_save_load_pathGbase,
+                                                 model_save_load_pathD = self.model_save_load_pathD,
+                                                 model_save_load_pathDVRL = self.model_save_load_pathDVRL,
                                                  max_step_trn=self.max_step_trn,
                                                  max_step_val=self.max_step_val,
-                                                 reward_method=self.reward_method
+                                                 reward_method=self.reward_method,
+                                                 whichGanLoss=self.whichGanLoss,
+                                                 GLoadNum = self.GLoadNum,
+                                                 GbaseLoadNum = self.GbaseLoadNum,
+                                                 DLoadNum = self.DLoadNum,
+                                                 DvrlLoadNum = self.DvrlLoadNum
                                                   )
 
             print('failedfailedfailedfailedfailedfailedfailedfailedfailedfailed')
+            REINFORCE_START.updateVars(**vars)
 
 
         for i in range(10000):
@@ -173,6 +205,10 @@ class EXCUTE_RL_GAN():
                 try:
                     print(f'REINFORCE_START.model_num_now is : {REINFORCE_START.model_num_now}')
                     torch.save(REINFORCE_START,self.model_save_load_path+str(i+REINFORCE_START.model_num_now)+'.pt')
+                    torch.save(REINFORCE_START.REINFORCE_GAN_G.state_dict(),self.model_save_load_pathG+str(i+self.GLoadNum)+'.pt')
+                    torch.save(REINFORCE_START.REINFORCE_GAN_D.state_dict(), self.model_save_load_pathD+ str(i+self.DLoadNum) + '.pt')
+                    torch.save(REINFORCE_START.REINFORCE_GAN_GBASE.state_dict(), self.model_save_load_pathGbase+ str(i+self.GbaseLoadNum) + '.pt')
+                    torch.save(REINFORCE_START.REINFORCE_DVRL.state_dict(), self.model_save_load_pathDVRL+ str(i+self.DvrlLoadNum) + '.pt')
                     print('saving RL model complete')
                     print('saving RL model complete')
                     print('saving RL model complete')

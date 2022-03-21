@@ -18,28 +18,35 @@ theta_gpu_num = [0]
 rwd_spread = True
 theta_max_epch = 25
 max_ep = 5000
-RL_save_range = 100
+RL_save_range = 1
 wayofdata = 'pureonly'
 noise_ratio = 1
 split_ratio = int(5923 * 0.05)
 master_dir = '/home/a286winteriscoming/'
 rl_b_size = split_ratio
 reward_method = 'nothing'
-dNoise = 100
-dHidden = 128
+dNoise = 103
+dHidden = 256
 gan_trn_bSize = 32
 gan_val_bSize = 32
 beta4f1 = 1
 max_step_trn = 100 #deprecated
 max_step_val = 100 #deprecated
+whichGanLoss= 'lsgan'
+
+GLoadNum = 3
+GbaseLoadNum = 16
+
+DLoadNum = 21
+DVRLLoadNum = 41
 
 
-specific_dir_name = mk_name(dir2='/',reward_method=str(reward_method),noise_ratio=noise_ratio, split_ratio=split_ratio,
-                            beta=beta4f1)
+specific_dir_name = mk_name(dir2='/',whichGanLoss=whichGanLoss,noise_ratio=noise_ratio, split_ratio=split_ratio,
+                            beta=beta4f1,dNoise=dNoise,dHidden=dHidden)
 
 test_fle_down_path = master_dir + 'hjs_dir1/' + specific_dir_name + '/'
 trn_fle_down_path = master_dir + 'hjs_dir1/' + specific_dir_name + '/'
-model_save_load_path = master_dir + 'hjs_dir1/' + specific_dir_name + '/'
+model_save_load_path = master_dir + 'hjs_dir1/' + specific_dir_name + '/Models/'
 createDirectory(master_dir + '/hjs_dir1/' + specific_dir_name)
 
 doIt = EXCUTE_RL_GAN(gamma = gamma,
@@ -68,5 +75,14 @@ doIt = EXCUTE_RL_GAN(gamma = gamma,
                     gan_val_bSize = gan_val_bSize,
                     beta4f1 = beta4f1,
                     max_step_trn = max_step_trn, #deprecated,
-                    max_step_val = max_step_val) #deprecated)
-doIt.excute_RL()
+                    max_step_val = max_step_val,#deprecated
+                    whichGanLoss=whichGanLoss,
+                    GLoadNum=GLoadNum,
+                    GbaseLoadNum= GbaseLoadNum,
+                    DLoadNum=DLoadNum,
+                    DVRLLoadNum=DVRLLoadNum
+                     )
+doIt.excute_RL(GLoadNum=GLoadNum,
+               DLoadNum=DLoadNum,
+               GbaseLoadNum=GbaseLoadNum,
+               DvrlLoadNum=DVRLLoadNum)

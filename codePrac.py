@@ -55,3 +55,6 @@ print(img_fake.size())
 # 이미지 출력하기
 imshow_grid(img_fake.cpu().detach())
 
+x = torch.tensor([1,2,3])
+tar = 5
+print(torch.square(x-tar))
