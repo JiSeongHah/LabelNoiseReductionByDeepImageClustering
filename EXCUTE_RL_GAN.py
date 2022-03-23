@@ -28,6 +28,7 @@ class EXCUTE_RL_GAN():
                  reward_normalize,
                  rwd_spread,
                  beta4f1,
+                 INNER_MAX_STEP,
                  rl_stop_threshold,
                  test_fle_down_path,
                  model_save_load_path,
@@ -40,6 +41,9 @@ class EXCUTE_RL_GAN():
                  GbaseLoadNum,
                  DLoadNum,
                  DVRLLoadNum,
+                 val_num2genLst,
+                 Num2Gen,
+                 useDiff
                  ):
 
         ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
@@ -48,6 +52,7 @@ class EXCUTE_RL_GAN():
         self.gamma = gamma
         self.rl_lr = rl_lr
         self.reward_normalize = reward_normalize
+        self.INNER_MAX_STEP = INNER_MAX_STEP
 
         self.test_fle_down_path = test_fle_down_path
         self.model_save_load_path = model_save_load_path
@@ -84,6 +89,11 @@ class EXCUTE_RL_GAN():
         self.dNoise = dNoise
         self.dHidden = dHidden
         self.whichGanLoss = whichGanLoss
+
+        self.val_num2genLst = val_num2genLst
+        self.Num2Gen = Num2Gen
+
+        self.useDiff = useDiff
 
         ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
         self.noise_ratio = noise_ratio
@@ -124,6 +134,10 @@ class EXCUTE_RL_GAN():
                 mk_noisy_data(raw_data=RL_train_data_zero, noise_ratio=self.noise_ratio,
                               split_ratio=self.split_ratio, way=self.wayofdata)).unsqueeze(1)
             RL_train_label_zero_little = torch.from_numpy(RL_train_label_zero[:])
+
+
+        RL_train_data_rest = torch.from_numpy(RL_train_data_rest).unsqueeze(1)
+        RL_train_label_rest = torch.from_numpy(RL_train_label_rest)
 
 
 
@@ -176,6 +190,9 @@ class EXCUTE_RL_GAN():
                                                  val_label=RL_val_labels,
                                                  rwd_spread=self.rwd_spread,
                                                  beta4f1=self.beta4f1,
+                                                 theta_gpu_num=self.theta_gpu_num,
+                                                 INNER_MAX_STEP = self.INNER_MAX_STEP,
+                                                 theta_b_size= self.theta_b_size,
                                                  rl_stop_threshold=self.rl_stop_threshold,
                                                  test_fle_down_path=self.test_fle_down_path,
                                                  model_save_load_path=self.model_save_load_path,
@@ -190,7 +207,10 @@ class EXCUTE_RL_GAN():
                                                  GLoadNum = self.GLoadNum,
                                                  GbaseLoadNum = self.GbaseLoadNum,
                                                  DLoadNum = self.DLoadNum,
-                                                 DvrlLoadNum = self.DvrlLoadNum
+                                                 DvrlLoadNum = self.DvrlLoadNum,
+                                                 val_num2genLst = self.val_num2genLst,
+                                                 Num2Gen=self.Num2Gen,
+                                                 useDiff=self.useDiff
                                                   )
 
             print('failedfailedfailedfailedfailedfailedfailedfailedfailedfailed')
@@ -200,7 +220,10 @@ class EXCUTE_RL_GAN():
         for i in range(10000):
             print(f'{i} th training RL start')
 
-            REINFORCE_START.STARTTRNANDVAL(data=RL_train_data_zero_little,label=RL_train_label_zero_little)
+            REINFORCE_START.STARTTRNANDVAL(data=RL_train_data_zero_little,
+                                           label=RL_train_label_zero_little,
+                                           RL_td_rest=RL_train_data_rest,
+                                           RL_tl_rest=RL_train_label_rest)
             if i%self.RL_save_range ==0 and i!=0:
                 try:
                     print(f'REINFORCE_START.model_num_now is : {REINFORCE_START.model_num_now}')

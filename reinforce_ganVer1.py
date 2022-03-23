@@ -6,6 +6,11 @@ from REINFORCE_GAN_TORCH import REINFORCE_GAN_TORCH
 from save_funcs import load_my_model
 import numpy as np
 from save_funcs import mk_name,createDirectory
+
+
+
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
 gamma = 0.999
 eps = 1e-9
 rl_lr = 4e-06

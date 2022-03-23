@@ -6,6 +6,11 @@ from REINFORCE_GAN_TORCH import REINFORCE_GAN_TORCH
 from save_funcs import load_my_model
 import numpy as np
 from save_funcs import mk_name,createDirectory
+
+
+
+
+os.environ["CUDA_VISIBLE_DEVICES"]="3"
 gamma = 0.999
 eps = 1e-9
 rl_lr = 4e-06
@@ -14,7 +19,7 @@ theta_b_size = 1024
 reward_normalize = True
 theta_stop_threshold = 0.01
 rl_stop_threshold = 0.01
-theta_gpu_num = [0]
+theta_gpu_num = [3]
 rwd_spread = True
 theta_max_epch = 25
 max_ep = 5000

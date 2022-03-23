@@ -58,3 +58,7 @@ imshow_grid(img_fake.cpu().detach())
 x = torch.tensor([1,2,3])
 tar = 5
 print(torch.square(x-tar))
+
+x = torch.randn(4,2)
+print(x)
+print(x[:,1])

@@ -96,7 +96,7 @@ class Prediction_lit_4REINFORCE1(pl.LightningModule):
         self.b_size_lst_val_POSITIVE = []
         self.b_size_lst_val_NEGATIVE = []
 
-        print('flushing lst done on model level')
+        print('flushing lst done on inner model level')
 
     def forward(self, x):
         output = self.model(x.float())
@@ -137,7 +137,7 @@ class Prediction_lit_4REINFORCE1(pl.LightningModule):
         cross_loss, b_size_true_pos, b_size_true_neg, b_size_false_pos, b_size_false_neg, b_size_total, b_size_pos, b_size_neg\
             = self.crossentropy_loss(pred=logits, label=b_label)
 
-        self.loss_lst_trn.append(float(cross_loss.clone().detach().item()))
+        self.loss_lst_trn.append(cross_loss.item())
         self.b_size_lst_trn_TRUE_POSITIVE.append(b_size_true_pos)
         self.b_size_lst_trn_TRUE_NEGATIVE.append(b_size_true_neg)
         self.b_size_lst_trn_FALSE_POSITIVE.append(b_size_false_pos)
@@ -158,7 +158,6 @@ class Prediction_lit_4REINFORCE1(pl.LightningModule):
         #print(f'ajoijweoifjaoiwejfio is : {cross_loss}')
 
         self.loss_lst_val.append(float(cross_loss.clone().detach().item()))
-
         self.b_size_lst_val_TRUE_POSITIVE.append(b_size_true_pos)
         self.b_size_lst_val_TRUE_NEGATIVE.append(b_size_true_neg)
         self.b_size_lst_val_FALSE_POSITIVE.append(b_size_false_pos)

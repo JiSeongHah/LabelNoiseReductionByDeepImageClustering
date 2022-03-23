@@ -12,22 +12,21 @@ class datamodule_4REINFORCE1(pl.LightningDataModule):
         self.batch_size_val = batch_size_val
         self.number_of_epoch = 0
 
-        print('theta setup start....')
+
 
         self.train_inputs = total_tdata
         self.train_labels = total_tlabel
-        print('theta shape of train input,label is : ', self.train_inputs.size(), self.train_labels.size())
+
         # for i in self.train_labels:
         #     if i != torch.tensor(0) or i != torch.tensor(1):
         #         print(i)
-        print('theta spliting train data done')
+
 
         self.val_inputs = val_data
         self.val_labels = val_label
 
-        print(f'shape of val data is : {self.val_inputs.shape}')
-        print(f'shape of val label is : {self.val_labels.shape}')
-        print('theta spliting validation data done')
+
+
 
     def prepare_data(self, stage=None):
         pass
@@ -43,17 +42,17 @@ class datamodule_4REINFORCE1(pl.LightningDataModule):
     def setup(self, stage=None):
 
         if stage == 'fit' or stage is None:
-            print('theta stage is ', stage)
+            pass
 
         if stage == 'test' or stage is None:
             pass
 
     def train_dataloader(self):
-        print('train_dataloading.......')
+
         train_data = TensorDataset(self.train_inputs, self.train_labels)
         train_sampler = RandomSampler(train_data)
         train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=self.batch_size, num_workers=1)
-        print('train_dataloading done....')
+
 
         return train_dataloader
 
