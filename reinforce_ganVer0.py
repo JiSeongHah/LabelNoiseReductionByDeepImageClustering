@@ -18,35 +18,43 @@ theta_gpu_num = [0]
 rwd_spread = True
 theta_max_epch = 25
 max_ep = 5000
-RL_save_range = 1
+RL_save_range = 10
 wayofdata = 'pureonly'
 noise_ratio = 1
 split_ratio = int(5923 * 0.05)
 master_dir = '/home/a286winteriscoming/'
-rl_b_size = split_ratio
+rl_b_size = 32
 reward_method = 'last'
-dNoise = 103
+dNoise = 100
 dHidden = 256
 gan_trn_bSize = 32
 gan_val_bSize = 32
-beta4f1 = 1
+beta4f1 = 1000
 max_step_trn = 100 #deprecated
 max_step_val = 100 #deprecated
 whichGanLoss= 'lsgan'
 INNER_MAX_STEP = 32
-GLoadNum = 3
-GbaseLoadNum = 16
+GLoadNum = 0
+GbaseLoadNum = 0
 
-DLoadNum = 21
-DVRLLoadNum = 41
-val_num2genLst = [i+1 for i in range(20)]
+DLoadNum = 0
+DVRLLoadNum = 0
+val_num2genLst = [i+1 for i in range(5)]
 Num2Gen = 32
 useDiff = False
-theta_gpu_num
+Num2Mul = 5
 
 
-specific_dir_name = mk_name(dir1='/',whichGanLoss=whichGanLoss,noise_ratio=noise_ratio, split_ratio=split_ratio,
-                            beta=beta4f1,dNoise=dNoise,dHidden=dHidden,Num2Gen=Num2Gen)
+specific_dir_name = mk_name(dirRL='/',
+                            whichGanLoss=whichGanLoss,
+                            split_ratio=split_ratio,
+                            beta=beta4f1,
+                            dNoise=dNoise,
+                            dHidden=dHidden,
+                            Num2Gen=Num2Gen,
+                            rlb=rl_b_size,
+                            ganb=gan_trn_bSize,
+                            INNMSTEP=INNER_MAX_STEP,Num2Mul=Num2Mul)
 
 test_fle_down_path = master_dir + 'hjs_dir1/' + specific_dir_name + '/'
 trn_fle_down_path = master_dir + 'hjs_dir1/' + specific_dir_name + '/'
@@ -88,6 +96,7 @@ doIt = EXCUTE_RL_GAN(gamma = gamma,
                     DVRLLoadNum=DVRLLoadNum,
                     val_num2genLst= val_num2genLst,
                     Num2Gen = Num2Gen,
+                    Num2Mul=Num2Mul,
                     useDiff= useDiff
                      )
 doIt.excute_RL(GLoadNum=GLoadNum,

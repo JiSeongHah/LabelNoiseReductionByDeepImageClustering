@@ -42,8 +42,10 @@ class EXCUTE_RL_GAN():
                  DLoadNum,
                  DVRLLoadNum,
                  val_num2genLst,
+                 Num2Mul,
                  Num2Gen,
-                 useDiff
+                 useDiff,
+                 DVRL_INTERVAL
                  ):
 
         ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
@@ -77,6 +79,7 @@ class EXCUTE_RL_GAN():
         self.rl_stop_threshold = rl_stop_threshold
         self.rwd_spread = rwd_spread
         self.beta4f1 = beta4f1
+        self.DVRL_INTERVAL = DVRL_INTERVAL
 
         self.RL_save_range = RL_save_range
         self.eps = eps
@@ -92,6 +95,7 @@ class EXCUTE_RL_GAN():
 
         self.val_num2genLst = val_num2genLst
         self.Num2Gen = Num2Gen
+        self.Num2Mul = Num2Mul
 
         self.useDiff = useDiff
 
@@ -161,7 +165,7 @@ class EXCUTE_RL_GAN():
 
         try:
             print('self.model_save_load_path is ',self.model_save_load_path)
-            self.model_num_now = float((load_my_model(self.model_save_load_path).split('/')[-1].split('.')[0]))
+            self.model_num_now = float((load_my_model(self.model_save_load_path).split('/')[0].split('.')[0]))
             print('self.model_num_now is : ',self.model_num_now)
             print('testttttttttttttt : ',load_my_model(self.model_save_load_path))
 
@@ -210,7 +214,9 @@ class EXCUTE_RL_GAN():
                                                  DvrlLoadNum = self.DvrlLoadNum,
                                                  val_num2genLst = self.val_num2genLst,
                                                  Num2Gen=self.Num2Gen,
-                                                 useDiff=self.useDiff
+                                                 Num2Mul=self.Num2Mul,
+                                                 useDiff=self.useDiff,
+                                                 DVRL_INTERVAL = self.DVRL_INTERVAL
                                                   )
 
             print('failedfailedfailedfailedfailedfailedfailedfailedfailedfailed')
@@ -223,7 +229,8 @@ class EXCUTE_RL_GAN():
             REINFORCE_START.STARTTRNANDVAL(data=RL_train_data_zero_little,
                                            label=RL_train_label_zero_little,
                                            RL_td_rest=RL_train_data_rest,
-                                           RL_tl_rest=RL_train_label_rest)
+                                           RL_tl_rest=RL_train_label_rest,
+                                           num2plot=i)
             if i%self.RL_save_range ==0 and i!=0:
                 try:
                     print(f'REINFORCE_START.model_num_now is : {REINFORCE_START.model_num_now}')
@@ -240,7 +247,8 @@ class EXCUTE_RL_GAN():
                     print('saving RL model complete')
                 except:
                     print('saving model failed')
-            if np.mean(REINFORCE_START.loss_lst_trn[-10:]) < 0.01:
+            if i == 501:
+                print('breaking.........')
                 break
             print(f'{i} th training for RL done')
             print('                   ')

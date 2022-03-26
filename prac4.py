@@ -110,23 +110,39 @@
 # 
 # print(yes_count,no_count)
 
-import os
+import torch
+x = torch.randn(5,3,2)
+print(x.size())
+print(x[3:].size())
 
+# import os
+# from save_funcs import createDirectory
+# import shutil
+#
+# rootPath = '/home/a286/hjs_dir1/dirRL/'
+# createDirectory('/home/a286/hjs_dir1/dirRLBackup/')
+# backupDir = '/home/a286/hjs_dir1/dirRLBackup/'
+# eachFolderLst = list(map(lambda x:x+'/',os.listdir(rootPath)))
+#
+# for eachFolder in eachFolderLst:
+#     eachFile = [file for file in os.listdir(rootPath+eachFolder) if file.endswith('.png')]
+#
+#     for each in eachFile:
+#         createDirectory(backupDir+eachFolder)
+#         shutil.copy(rootPath+eachFolder+each,backupDir+eachFolder+each)
+#         print('done')
+#
 
-rootPath = '/home/a286/winteris'
-
-eachFolderLst = os.listdir(rootPath)
-
-notRemoveLst = [str(10000*i)+'.pth' for i in range(1000)] + ['Result.png','sample_submission.csv']
-
-for eachFolder in eachFolderLst:
-    fullEachFolder = rootPath+eachFolder+'/'
-    eachFileLst = os.listdir(fullEachFolder)
-    if len(eachFileLst) == 0:
-        os.rmdir(fullEachFolder)
-        print(f'{fullEachFolder} removed because it is empty')
-    for eachFile in eachFileLst:
-        fullEachFilePath = fullEachFolder + eachFile
-        if eachFile not in notRemoveLst:
-            os.remove(fullEachFilePath)
-            print(f'{fullEachFilePath} removed')
+# notRemoveLst = [str(10000*i)+'.pth' for i in range(1000)] + ['Result.png','sample_submission.csv']
+# 
+# for eachFolder in eachFolderLst:
+#     fullEachFolder = rootPath+eachFolder+'/'
+#     eachFileLst = os.listdir(fullEachFolder)
+#     if len(eachFileLst) == 0:
+#         os.rmdir(fullEachFolder)
+#         print(f'{fullEachFolder} removed because it is empty')
+#     for eachFile in eachFileLst:
+#         fullEachFilePath = fullEachFolder + eachFile
+#         if eachFile not in notRemoveLst:
+#             os.remove(fullEachFilePath)
+#             print(f'{fullEachFilePath} removed')

@@ -72,7 +72,9 @@ class REINFORCE_GAN_TORCH(nn.Module):
                  reward_method,
                  val_num2genLst,
                  Num2Gen,
+                 Num2Mul,
                  useDiff,
+                 DVRL_INTERVAL,
                  lsganA= 0,
                  lsganB = 1,
                  lsganC = 1,
@@ -100,6 +102,8 @@ class REINFORCE_GAN_TORCH(nn.Module):
         self.lsganC =lsganC
         self.theta_b_size = theta_b_size
         self.INNER_MAX_STEP = INNER_MAX_STEP
+        self.Num2Mul = Num2Mul
+        self.DVRL_INTERVAL = DVRL_INTERVAL
 
         ####################################MODEL SETTINGG##############################3
 
@@ -113,6 +117,7 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
         ##########################VARS for RL model##################################
         self.loss_lst_trn = []
+        self.loss_lst_trn_tmp = []
         self.loss_lst_val = []
 
         self.policy_saved_log_probs_lst = []
@@ -121,6 +126,7 @@ class REINFORCE_GAN_TORCH(nn.Module):
         self.R_lst_val = []
         self.theta_gpu_num = theta_gpu_num
         self.total_reward_lst_trn = []
+        self.total_reward_lst_trn_tmp = []
 
         self.automatic_optimization = False
         self.gamma = gamma
@@ -143,12 +149,22 @@ class REINFORCE_GAN_TORCH(nn.Module):
         self.gan_trn_bSize = gan_trn_bSize
         self.gan_val_bSize = gan_val_bSize
 
+        self.lossLstLossG_GAN_TMP = []
+        self.lossLstLossG_DVRL_TMP = []
+        self.lossLstLossD_TMP = []
+        self.lossLstLossGBASE_TMP = []
+        self.lossLstLossDBASE_TMP = []
 
         self.lossLstLossG_GAN = []
         self.lossLstLossG_DVRL = []
         self.lossLstLossD = []
         self.lossLstLossGBASE = []
         self.lossLstLossDBASE = []
+
+        self.ProbFakeLst_TMP = []
+        self.ProbRealLst_TMP = []
+        self.ProbFakeLstBASE_TMP = []
+        self.ProbRealLstBASE_TMP = []
 
         self.ProbFakeLst = []
         self.ProbRealLst = []
@@ -157,6 +173,15 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
         self.reward4plotGBaseLst =[]
         self.reward4plotGLst = []
+        self.reward4plotGBaseLstAvg = []
+        self.reward4plotGLstAvg = []
+
+        self.reward4plotGBaseFiledLst = []
+        self.reward4plotGFiledLst = []
+        self.reward4plotGBaseFiledLstAvg = []
+        self.reward4plotGFiledLstAvg = []
+
+
 
         ########################do validation dataset change##########################
         self.val_label_zero = val_label[val_label == 0]
@@ -213,6 +238,7 @@ class REINFORCE_GAN_TORCH(nn.Module):
     def forward(self,x):
         # print(f'RL part input is in device : {x.device}')
         probs_softmax = F.softmax(self.REINFORCE_DVRL(x.float()),dim=1)
+        # print(f'example of prob_softmax is : {probs_softmax[:10]}')
         # print(f'Rl part output is in device : {probs_softmax.device}')
 
 
@@ -259,12 +285,39 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
         return torch.randn(BSize,self.dNoise)
 
-    def flush_lst(self):
+    def flush_innerDVRL_lst(self):
         self.policy_saved_log_probs_lst = []
         self.policy_saved_log_probs_lst_val = []
         self.R_lst = []
         self.R_lst_val = []
+
         print('flushing lst on pl level complete')
+
+    def flush_gan_lst(self):
+
+        self.lossLstLossG_GAN_TMP = []
+        self.lossLstLossG_DVRL_TMP = []
+        self.lossLstLossD_TMP = []
+        self.lossLstLossGBASE_TMP = []
+        self.lossLstLossDBASE_TMP = []
+
+        self.ProbFakeLst_TMP = []
+        self.ProbRealLst_TMP = []
+        self.ProbFakeLstBASE_TMP = []
+        self.ProbRealLstBASE_TMP = []
+
+    def flush_DVRL_lst(self):
+
+        self.total_reward_lst_trn_tmp = []
+        self.loss_lst_trn_tmp = []
+
+    def flush_val_reward_lst(self):
+
+        self.reward4plotGBaseLst = []
+        self.reward4plotGLst = []
+        self.reward4plotGBaseFiledLst = []
+        self.reward4plotGFiledLst = []
+
 
     def imshow(self,img,saveDir):
         img = (img + 1) / 2
@@ -275,16 +328,16 @@ class REINFORCE_GAN_TORCH(nn.Module):
         plt.savefig(saveDir + 'GENERATED_IMAGE.png', dpi=200)
         plt.close()
 
-    def imshow_grid(self,img,saveDir,showNum):
+    def imshow_grid(self,img,saveDir,showNum,plotNum):
         img = utils.make_grid(img.cpu().detach())
         img = (img + 1) / 2
         npimg = img.numpy()
         plt.imshow(np.transpose(npimg, (1, 2, 0)))
 
         randNum = random.random()
-        if randNum < 0.1 and showNum % 10 ==0:
-            plt.show()
-        plt.savefig(saveDir + 'GENERATED_IMAGE_GRID.png', dpi=200)
+        # if randNum < 0.00001 and showNum % 10 ==0:
+        #     plt.show()
+        plt.savefig(saveDir + 'GENERATED_IMAGE_GRID'+str(plotNum)+'.png', dpi=200)
         plt.close()
 
     def REINFORCE_LOSS(self, action_prob, reward):
@@ -391,9 +444,9 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
 
         if self.reward_method == 'mean':
-            reward = np.mean(theta_model_part.avg_acc_lst_val_f1score[-self.conv_crit_num:])
+            reward = -1+ np.mean(theta_model_part.avg_acc_lst_val_f1score[-self.conv_crit_num:])
         if self.reward_method == 'last':
-            reward = theta_model_part.avg_acc_lst_val_f1score[-1:][0]
+            reward = -1+ theta_model_part.avg_acc_lst_val_f1score[-1:][0]
 
         done = True
         info = 'step complete'
@@ -408,7 +461,7 @@ class REINFORCE_GAN_TORCH(nn.Module):
         return reward, done, info
 
 
-    def training_step(self, td2gen, tl2gen,RL_td_rest,RL_tl_rest):
+    def training_step(self, td2gen, tl2gen,RL_td_rest,RL_tl_rest,trainingNum):
 
         self.REINFORCE_GAN_G.train()
         self.REINFORCE_GAN_D.train()
@@ -467,10 +520,10 @@ class REINFORCE_GAN_TORCH(nn.Module):
                 lossG.backward()
                 self.optimizerGBASE.step()
 
-                self.lossLstLossGBASE.append(lossG.item())
-                self.lossLstLossDBASE.append(lossD.item())
-                self.ProbFakeLstBASE.append(torch.mean(p_fake).item())
-                self.ProbRealLstBASE.append(torch.mean(p_real).item())
+                self.lossLstLossGBASE_TMP.append(lossG.item())
+                self.lossLstLossDBASE_TMP.append(lossD.item())
+                self.ProbFakeLstBASE_TMP.append(torch.mean(p_fake).item())
+                self.ProbRealLstBASE_TMP.append(torch.mean(p_real).item())
         print('training G Base complete!! training G Base complete!! training G Base complete!! training G Base complete!! ')
         print('training G Base complete!! training G Base complete!! training G Base complete!! training G Base complete!! ')
         print('training G Base complete!! training G Base complete!! training G Base complete!! training G Base complete!! ')
@@ -536,18 +589,18 @@ class REINFORCE_GAN_TORCH(nn.Module):
             # for DVRL loss
             for param in self.REINFORCE_DVRL.parameters():
                 param.requires_grad = False
-            selectionProb = self.REINFORCE_DVRL(GeneratedImgbyG)[:,1]
+            selectionProb = self(GeneratedImgbyG)[:,1]
 
             lossG_GAN = self.GAN_LOSS(p_fake=p_fake,GorD='G')
             lossG_DVRL = torch.mean(torch.square(selectionProb-1.0))
             totalLossG = lossG_GAN + lossG_DVRL
             totalLossG.backward()
 
-            self.lossLstLossG_GAN.append(lossG_GAN.item())
-            self.lossLstLossG_DVRL.append(lossG_DVRL.item())
-            self.lossLstLossD.append(lossD.item())
-            self.ProbFakeLst.append(torch.mean(p_fake).item())
-            self.ProbRealLst.append(torch.mean(p_real).item())
+            self.lossLstLossG_GAN_TMP.append(lossG_GAN.item())
+            self.lossLstLossG_DVRL_TMP.append(lossG_DVRL.item())
+            self.lossLstLossD_TMP.append(lossD.item())
+            self.ProbFakeLst_TMP.append(torch.mean(p_fake).item())
+            self.ProbRealLst_TMP.append(torch.mean(p_real).item())
             self.optimizerG.step()
         print('training real G complete!!! training real G complete!!! training real G complete!!! training real G complete!!! ')
         print(
@@ -573,47 +626,48 @@ class REINFORCE_GAN_TORCH(nn.Module):
         #################   code for baseline reward for DVRL ##################
 
         if self.useDiff == True:
-            print('training DVRL BASE start....')
-            print(' ')
-            print(' ')
-            print(' ')
-            print(' ')
-            with torch.set_grad_enabled(False):
-
-
-                RL_tl_rest = torch.ones_like(torch.from_numpy(RL_tl_rest))
-
-                input_data4ori = torch.cat((RL_td_rest, td2gen), dim=0)
-                input_label4ori = torch.cat((RL_tl_rest, tl2gen), dim=0)
-
-                ori_model_part = Prediction_lit_4REINFORCE1(save_dir=self.test_fle_down_path,
-                                                            save_range=10,
-                                                            beta4f1=self.beta4f1)
-
-                dm4Ori = datamodule_4REINFORCE1(batch_size=self.theta_b_size,
-                                                total_tdata=input_data4ori,
-                                                total_tlabel=input_label4ori,
-                                                val_data=self.val_data,
-                                                val_label=self.val_label)
-
-                trainer_part4Ori = pl.Trainer(max_steps=self.INNER_MAX_STEP,
-                                              max_epochs=1,
-                                              gpus=self.theta_gpu_num,
-                                              strategy='dp',
-                                              logger=False,
-                                              enable_checkpointing=False,
-                                              num_sanity_val_steps=0,
-                                              enable_model_summary=None)
-
-                trainer_part4Ori.fit(ori_model_part, dm4Ori)
-                trainer_part4Ori.validate(ori_model_part, dm4Ori)
-
-                REWARD_ORI = ori_model_part.avg_acc_lst_val_f1score[-1]
-                print('training real G complete!!!')
+            if trainingNum % self.DVRL_INTERVAL == 0:
+                print('training DVRL BASE start....')
                 print(' ')
                 print(' ')
                 print(' ')
                 print(' ')
+                with torch.set_grad_enabled(False):
+
+
+                    RL_tl_rest = torch.ones_like(torch.from_numpy(RL_tl_rest))
+
+                    input_data4ori = torch.cat((RL_td_rest, td2gen), dim=0)
+                    input_label4ori = torch.cat((RL_tl_rest, tl2gen), dim=0)
+
+                    ori_model_part = Prediction_lit_4REINFORCE1(save_dir=self.test_fle_down_path,
+                                                                save_range=10,
+                                                                beta4f1=self.beta4f1)
+
+                    dm4Ori = datamodule_4REINFORCE1(batch_size=self.theta_b_size,
+                                                    total_tdata=input_data4ori,
+                                                    total_tlabel=input_label4ori,
+                                                    val_data=self.val_data,
+                                                    val_label=self.val_label)
+
+                    trainer_part4Ori = pl.Trainer(max_steps=self.INNER_MAX_STEP,
+                                                  max_epochs=1,
+                                                  gpus=self.theta_gpu_num,
+                                                  strategy='dp',
+                                                  logger=False,
+                                                  enable_checkpointing=False,
+                                                  num_sanity_val_steps=0,
+                                                  enable_model_summary=None)
+
+                    trainer_part4Ori.fit(ori_model_part, dm4Ori)
+                    trainer_part4Ori.validate(ori_model_part, dm4Ori)
+
+                    REWARD_ORI = ori_model_part.avg_acc_lst_val_f1score[-1]
+                    print('training real G complete!!!')
+                    print(' ')
+                    print(' ')
+                    print(' ')
+                    print(' ')
 
         #################   code for baseline reward for DVRL ##################
         ########################################################################
@@ -629,137 +683,116 @@ class REINFORCE_GAN_TORCH(nn.Module):
         ########################################################################
         #################   code for training DVRL  ############################
 
+        if trainingNum % self.DVRL_INTERVAL == 0:
+            with torch.set_grad_enabled(False):
 
-        with torch.set_grad_enabled(False):
+                for i in range(self.Num2Gen):
 
-            for i in range(self.Num2Gen):
+                    noiseZ4Gen = self.get_gaussianNoise_z(self.gan_trn_bSize)
+                    GeneratedImg = self.REINFORCE_GAN_G(noiseZ4Gen)
 
-                noiseZ4Gen = self.get_gaussianNoise_z(self.gan_trn_bSize)
-                GeneratedImg = self.REINFORCE_GAN_G(noiseZ4Gen)
-
-                if i ==0:
-                    RL_td_zero = td2gen
-                else:
-                    RL_td_zero = torch.cat((RL_td_zero,GeneratedImg),dim=0)
-
-
-        print('DVRL train_dataloading.......')
-        DVRL_train_data = TensorDataset(RL_td_zero, torch.zeros(RL_td_zero.size(0)))
-        DVRL_train_sampler = RandomSampler(train_data)
-        DVRL_train_dataloader = DataLoader(DVRL_train_data,
-                                           sampler=DVRL_train_sampler,
-                                           batch_size=self.rl_b_size,
-                                           num_workers=0)
-        print('DVRL train_dataloading complete!')
-        print(f'size of input for DVRL is : {RL_td_zero.size()} ')
+                    if i ==0:
+                        RL_td_zero = td2gen
+                    else:
+                        RL_td_zero = torch.cat((RL_td_zero,GeneratedImg),dim=0)
 
 
-        print('DVRL train starttt!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-
-        for param in self.REINFORCE_DVRL.parameters():
-            param.requires_grad = True
-
-        with torch.set_grad_enabled(True):
-
-            for idx,(b_input, b_label) in enumerate(DVRL_train_dataloader):
-
-
-                print(f'size of b_input for {idx} th step of DVRL is : {b_input.size()}')
-
-                action_probs = self.forward(b_input)
-                m = Categorical(action_probs)
-                action = m.sample()
-                action_bool = action.clone().detach().bool()
-
-                self.policy_saved_log_probs_lst.append(m.log_prob(action))
-
-                # print(b_input.size())
-
-                good_data_tensor = b_input.clone().detach()
-                good_label_tensor = b_label.clone().detach()
-                data_filter_tensor = action_bool.clone().detach()
+            print('DVRL train_dataloading.......')
+            DVRL_train_data = TensorDataset(RL_td_zero, torch.zeros(RL_td_zero.size(0)))
+            DVRL_train_sampler = RandomSampler(DVRL_train_data)
+            DVRL_train_dataloader = DataLoader(DVRL_train_data,
+                                               sampler=DVRL_train_sampler,
+                                               batch_size=self.rl_b_size,
+                                               num_workers=2)
+            print('DVRL train_dataloading complete!')
+            print(f'size of input for DVRL is : {RL_td_zero.size()} ')
 
 
-                print(f'size of filterd data for {idx}th step of DVRL is : {good_data_tensor[data_filter_tensor].size()}')
-                print(f'size of filterd label for {idx}th step of DVRL is : {good_label_tensor[data_filter_tensor].size()}')
+            print('DVRL train starttt!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
 
-                action_4_step = [torch.cat((RL_td_rest, good_data_tensor[data_filter_tensor]), dim=0)
-                    , torch.cat((RL_tl_rest, good_label_tensor[data_filter_tensor]), dim=0)]
+            for param in self.REINFORCE_DVRL.parameters():
+                param.requires_grad = True
 
-                reward, done, info = self.step(action=action_4_step)
+            with torch.set_grad_enabled(True):
 
-                if self.useDiff == True:
-                    reward = reward - REWARD_ORI
-
-                self.R_lst.append(reward)
-                self.total_reward_lst_trn.append(reward)
-
-                Return = 0
-                policy_loss = []
-                Returns = []
+                for idx,(b_input, b_label) in enumerate(DVRL_train_dataloader):
 
 
-                for r in self.R_lst[::-1]:
-                    Return = r + self.gamma * Return
-                    Returns.insert(0, Return)
-                Returns = torch.tensor(Returns)
-                print(f'Returns : {Returns}')
-                # if self.reward_normalize == True:
-                #     Returns = (Returns - Returns.mean()) / (Returns.std() + self.eps)
+                    print(f'size of b_input for {idx} th step of DVRL is : {b_input.size()}')
 
-                for log_prob in self.policy_saved_log_probs_lst:
-                    policy_loss.append(-log_prob * Returns)
+                    action_probs = self.forward(b_input)
+                    m = Categorical(action_probs)
+                    action = m.sample()
+                    action_bool = action.clone().detach().bool()
 
-                policy_loss = torch.sum(torch.cat(policy_loss))
-                self.loss_lst_trn.append(float(policy_loss.item()))
-                self.optimizerDVRL.zero_grad()
-                policy_loss.backward()
-                self.optimizerDVRL.step()
-                print('gradient optimization done')
+                    self.policy_saved_log_probs_lst.append(m.log_prob(action))
 
-                print(f'self.loss_lst_trn is : {self.loss_lst_trn}')
-                print(f'self.total_rwd_lst_trn is : {self.total_reward_lst_trn}')
+                    # print(b_input.size())
 
-                fig = plt.figure()
-                ax1 = fig.add_subplot(12, 2, 1)
-                ax1.plot(range(len(self.loss_lst_trn)), self.loss_lst_trn)
-                ax1.set_title('DVRL loss')
-                ax2 = fig.add_subplot(12, 2, 2)
-                ax2.plot(range(len(self.total_reward_lst_trn)), self.total_reward_lst_trn)
-                ax2.set_title('DVRL rwd')
-                ax3 = fig.add_subplot(12, 2, 3)
-                ax3.plot(range(len(self.lossLstLossGBASE)), self.lossLstLossGBASE)
-                ax3.set_title('GBASE loss')
-                ax4 = fig.add_subplot(12, 2, 4)
-                ax4.plot(range(len(self.lossLstLossDBASE)), self.lossLstLossDBASE)
-                ax4.set_title('DBASE loss')
-                ax5 = fig.add_subplot(12, 2, 5)
-                ax5.plot(range(len(self.lossLstLossG_GAN)), self.lossLstLossG_GAN)
-                ax5.set_title('G_GAN loss')
-                ax6 = fig.add_subplot(12, 2, 6)
-                ax6.plot(range(len(self.lossLstLossG_DVRL)), self.lossLstLossG_DVRL)
-                ax6.set_title('G_DVRL loss')
-                ax7 = fig.add_subplot(12, 2, 7)
-                ax7.plot(range(len(self.lossLstLossD)), self.lossLstLossD)
-                ax7.set_title('D loss')
-                ax8 = fig.add_subplot(12, 2, 8)
-                ax8.plot(range(len(self.ProbFakeLstBASE)), self.ProbFakeLstBASE)
-                ax8.set_title('Base Pfake')
-                ax9 = fig.add_subplot(12, 2, 9)
-                ax9.plot(range(len(self.ProbRealLstBASE)), self.ProbRealLstBASE)
-                ax9.set_title('BASE Preal')
-                ax10 = fig.add_subplot(12, 2, 10)
-                ax10.plot(range(len(self.ProbFakeLst)), self.ProbFakeLst)
-                ax10.set_title('Pfake')
-                ax11 = fig.add_subplot(12, 2, 11)
-                ax11.plot(range(len(self.ProbRealLst)), self.ProbRealLst)
-                ax11.set_title('Preal')
+                    good_data_tensor = b_input.clone().detach()
+                    good_label_tensor = b_label.clone().detach()
+                    data_filter_tensor = action_bool.clone().detach()
 
-                plt.savefig(self.test_fle_down_path + 'TRAIN_TOTAL_RESULT_PLOT.png', dpi=200)
-                print('saving plot for DVRL complete!')
-                plt.close()
 
-                self.flush_lst()
+                    print(f'size of filterd data for {idx}th step of DVRL is : {good_data_tensor[data_filter_tensor].size()}')
+                    print(f'size of filterd label for {idx}th step of DVRL is : {good_label_tensor[data_filter_tensor].size()}')
+
+                    action_4_step = [torch.cat((RL_td_rest, good_data_tensor[data_filter_tensor]), dim=0)
+                        , torch.cat((RL_tl_rest, good_label_tensor[data_filter_tensor]), dim=0)]
+
+                    reward, done, info = self.step(action=action_4_step)
+
+                    if self.useDiff == True:
+                        reward = reward - REWARD_ORI
+
+                    self.R_lst.append(reward)
+                    self.total_reward_lst_trn_tmp.append(reward)
+
+                    Return = 0
+                    policy_loss = []
+                    Returns = []
+
+
+                    for r in self.R_lst[::-1]:
+                        Return = r + self.gamma * Return
+                        Returns.insert(0, Return)
+                    Returns = torch.tensor(Returns)
+                    print(f'Returns : {Returns}')
+                    # if self.reward_normalize == True:
+                    #     Returns = (Returns - Returns.mean()) / (Returns.std() + self.eps)
+
+                    for log_prob in self.policy_saved_log_probs_lst:
+                        policy_loss.append(-log_prob * Returns)
+
+                    policy_loss = torch.sum(torch.cat(policy_loss))
+                    self.loss_lst_trn_tmp.append(float(policy_loss.item()))
+                    self.optimizerDVRL.zero_grad()
+                    policy_loss.backward()
+                    self.optimizerDVRL.step()
+                    print('gradient optimization done')
+
+                    print(f'self.loss_lst_trn is : {self.loss_lst_trn}')
+                    print(f'self.total_rwd_lst_trn is : {self.total_reward_lst_trn}')
+
+                    self.flush_innerDVRL_lst()
+
+            self.loss_lst_trn.append(np.mean(self.loss_lst_trn_tmp))
+            self.total_reward_lst_trn.append(np.mean(self.total_reward_lst_trn_tmp))
+            self.flush_DVRL_lst()
+
+
+        self.lossLstLossG_GAN.append(np.mean(self.lossLstLossG_GAN_TMP))
+        self.lossLstLossG_DVRL.append(np.mean(self.lossLstLossG_DVRL_TMP))
+        self.lossLstLossD.append(np.mean(self.lossLstLossD_TMP))
+        self.lossLstLossGBASE.append(np.mean(self.lossLstLossGBASE_TMP))
+        self.lossLstLossDBASE.append(np.mean(self.lossLstLossDBASE_TMP))
+
+        self.ProbFakeLst.append(np.mean(self.ProbFakeLst_TMP))
+        self.ProbRealLst.append(np.mean(self.ProbRealLst_TMP))
+        self.ProbFakeLstBASE.append(np.mean(self.ProbFakeLstBASE_TMP))
+        self.ProbRealLstBASE.append(np.mean(self.ProbRealLstBASE_TMP))
+        self.flush_gan_lst()
+
 
         torch.set_grad_enabled(False)
         self.REINFORCE_GAN_G.eval()
@@ -768,7 +801,7 @@ class REINFORCE_GAN_TORCH(nn.Module):
         self.REINFORCE_GAN_DBASE.eval()
         self.REINFORCE_DVRL.eval()
 
-    def validation_step(self, vd2gen,vl2gen,RL_td_rest,RL_tl_rest):
+    def validation_step(self, vd2gen,vl2gen,RL_td_rest,RL_tl_rest,valNum):
 
         self.REINFORCE_GAN_G.eval()
         self.REINFORCE_GAN_D.eval()
@@ -786,9 +819,11 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
                 for i in range(val_num2gen):
 
-                    noiseZ = self.get_gaussianNoise_z(self.rl_b_size)
+                    noiseZ = self.get_gaussianNoise_z(self.Num2Mul*self.gan_trn_bSize)
 
                     GeneratedImg = self.REINFORCE_GAN_GBASE(noiseZ)
+                    if val_num2gen == 1 and i ==0:
+                        self.imshow_grid(img=GeneratedImg[:5],saveDir=self.test_fle_down_path+'BASE_',showNum=1,plotNum=valNum)
 
                     if i == 0:
                         RL_td_zero = vd2gen
@@ -831,6 +866,63 @@ class REINFORCE_GAN_TORCH(nn.Module):
                     REWARD_BASE = BASE_model_part.avg_acc_lst_val_f1score[-1]
                     self.reward4plotGBaseLst.append(REWARD_BASE)
 
+
+                DVRL_val_data = TensorDataset(RL_td_zero, torch.zeros(RL_td_zero.size(0)))
+                DVRL_val_sampler = SequentialSampler(DVRL_val_data)
+                DVRL_val_dataloader = DataLoader(DVRL_val_data,
+                                                   sampler=DVRL_val_sampler,
+                                                   batch_size=self.rl_b_size,
+                                                   num_workers=2)
+                print('DVRL train_dataloading complete!')
+                print(f'size of input before filtered is : {RL_td_zero.size()} ')
+
+                for idx, (b_input, b_label) in enumerate(DVRL_val_dataloader):
+                    print(f'size of b_input for {idx} th step of DVRL is : {b_input.size()}')
+
+                    action_probs = self.forward(b_input)
+                    m = Categorical(action_probs)
+                    action = m.sample()
+                    action_bool = action.clone().detach().bool()
+
+                    if idx ==0:
+                        good_data_tensor = b_input.clone().detach()
+                        good_label_tensor = b_label.clone().detach()
+                        data_filter_tensor = action_bool.clone().detach()
+                    else:
+                        good_data_tensor = torch.cat((good_data_tensor,b_input.clone().detach()),dim=0)
+                        good_label_tensor = torch.cat((good_label_tensor,b_label.clone().detach()),dim=0)
+                        data_filter_tensor = torch.cat((data_filter_tensor,action_bool.clone().detach()),dim=0)
+
+                print(f'size of input after filtered : {good_data_tensor[data_filter_tensor].size()}')
+
+                input_data4BASE = torch.cat((RL_td_rest, good_data_tensor[data_filter_tensor]), dim=0)
+                input_label4BASE = torch.cat((RL_tl_rest, good_label_tensor[data_filter_tensor]), dim=0).long()
+
+                BASE_model_part = Prediction_lit_4REINFORCE1(save_dir=self.test_fle_down_path,
+                                                            save_range=10,
+                                                            beta4f1=self.beta4f1)
+
+                dm4BASE = datamodule_4REINFORCE1(batch_size=self.theta_b_size,
+                                                total_tdata=input_data4BASE,
+                                                total_tlabel=input_label4BASE,
+                                                val_data=self.val_data,
+                                                val_label=self.val_label)
+
+                trainer_part4BASE = pl.Trainer(max_steps=self.INNER_MAX_STEP,
+                                              max_epochs=1,
+                                              gpus=self.theta_gpu_num,
+                                              strategy='dp',
+                                              logger=False,
+                                              enable_checkpointing=False,
+                                              num_sanity_val_steps=0,
+                                              enable_model_summary=None)
+
+                trainer_part4BASE.fit(BASE_model_part, dm4BASE)
+                trainer_part4BASE.validate(BASE_model_part, dm4BASE)
+
+                REWARD_BASE_FILTERDVER = BASE_model_part.avg_acc_lst_val_f1score[-1]
+                self.reward4plotGBaseFiledLst.append(REWARD_BASE_FILTERDVER)
+
             # del RL_tl_zero
             # del RL_td_zero
             # del RL_tl_rest
@@ -859,9 +951,12 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
                 for i in range(val_num2gen):
 
-                    noiseZ = self.get_gaussianNoise_z(self.rl_b_size)
+                    noiseZ = self.get_gaussianNoise_z(self.Num2Mul*self.gan_trn_bSize)
 
                     GeneratedImg = self.REINFORCE_GAN_G(noiseZ)
+
+                    if val_num2gen == 1 and i ==0:
+                        self.imshow_grid(img=GeneratedImg[:5],saveDir=self.test_fle_down_path+'COMPARE_',showNum=1,plotNum=valNum)
 
                     if i == 0:
                         RL_td_zero = vd2gen
@@ -904,6 +999,62 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
                     self.reward4plotGLst.append(REWARD_G)
 
+                DVRL_val_data = TensorDataset(RL_td_zero, torch.zeros(RL_td_zero.size(0)))
+                DVRL_val_sampler = SequentialSampler(DVRL_val_data)
+                DVRL_val_dataloader = DataLoader(DVRL_val_data,
+                                                   sampler=DVRL_val_sampler,
+                                                   batch_size=self.rl_b_size,
+                                                   num_workers=2)
+                print('DVRL train_dataloading complete!')
+                print(f'size of input before filtered is : {RL_td_zero.size()} ')
+
+                for idx, (b_input, b_label) in enumerate(DVRL_val_dataloader):
+                    print(f'size of b_input for {idx} th step of DVRL is : {b_input.size()}')
+
+                    action_probs = self.forward(b_input)
+                    m = Categorical(action_probs)
+                    action = m.sample()
+                    action_bool = action.clone().detach().bool()
+
+                    if idx ==0:
+                        good_data_tensor = b_input.clone().detach()
+                        good_label_tensor = b_label.clone().detach()
+                        data_filter_tensor = action_bool.clone().detach()
+                    else:
+                        good_data_tensor = torch.cat((good_data_tensor,b_input.clone().detach()),dim=0)
+                        good_label_tensor = torch.cat((good_label_tensor,b_label.clone().detach()),dim=0)
+                        data_filter_tensor = torch.cat((data_filter_tensor,action_bool.clone().detach()),dim=0)
+
+                print(f'size of input after filtered : {good_data_tensor[data_filter_tensor].size()}')
+
+                input_data4BASE = torch.cat((RL_td_rest, good_data_tensor[data_filter_tensor]), dim=0)
+                input_label4BASE = torch.cat((RL_tl_rest, good_label_tensor[data_filter_tensor]), dim=0).long()
+
+                BASE_model_part = Prediction_lit_4REINFORCE1(save_dir=self.test_fle_down_path,
+                                                            save_range=10,
+                                                            beta4f1=self.beta4f1)
+
+                dm4BASE = datamodule_4REINFORCE1(batch_size=self.theta_b_size,
+                                                total_tdata=input_data4BASE,
+                                                total_tlabel=input_label4BASE,
+                                                val_data=self.val_data,
+                                                val_label=self.val_label)
+
+                trainer_part4BASE = pl.Trainer(max_steps=self.INNER_MAX_STEP,
+                                              max_epochs=1,
+                                              gpus=self.theta_gpu_num,
+                                              strategy='dp',
+                                              logger=False,
+                                              enable_checkpointing=False,
+                                              num_sanity_val_steps=0,
+                                              enable_model_summary=None)
+
+                trainer_part4BASE.fit(BASE_model_part, dm4BASE)
+                trainer_part4BASE.validate(BASE_model_part, dm4BASE)
+
+                REWARD_G_FILTERDVER = BASE_model_part.avg_acc_lst_val_f1score[-1]
+                self.reward4plotGFiledLst.append(REWARD_G_FILTERDVER)
+
             # del RL_tl_zero
             # del RL_td_zero
             # del RL_tl_rest
@@ -928,7 +1079,7 @@ class REINFORCE_GAN_TORCH(nn.Module):
         self.REINFORCE_GAN_DBASE.train()
         self.REINFORCE_DVRL.train()
 
-    def STARTTRNANDVAL(self,data,label,RL_td_rest,RL_tl_rest):
+    def STARTTRNANDVAL(self,data,label,RL_td_rest,RL_tl_rest,num2plot):
         print('===========================================================================================')
         print('===========================================================================================')
         print('===========================================================================================')
@@ -945,17 +1096,102 @@ class REINFORCE_GAN_TORCH(nn.Module):
         print('')
         print('')
         print('')
-        self.validation_step(vd2gen=data,vl2gen=label,RL_td_rest=RL_td_rest,RL_tl_rest=RL_tl_rest)
+        self.validation_step(vd2gen=data,vl2gen=label,RL_td_rest=RL_td_rest,RL_tl_rest=RL_tl_rest,valNum=num2plot)
         print('validation step complete!!!')
+
+        print(f'len of what we goonna append is : {len(self.reward4plotGBaseLst[-len(self.val_num2genLst):])}')
+
+        self.reward4plotGBaseLstAvg.append(np.mean(self.reward4plotGBaseLst[-len(self.val_num2genLst):]))
+        self.reward4plotGLstAvg.append(np.mean(self.reward4plotGLst[-len(self.val_num2genLst):]))
+        self.reward4plotGBaseFiledLstAvg.append(np.mean(self.reward4plotGBaseFiledLst[-len(self.val_num2genLst):]))
+        self.reward4plotGFiledLstAvg.append(np.mean(self.reward4plotGFiledLst[-len(self.val_num2genLst):]))
+
+        fig = plt.figure(constrained_layout=True)
+        ax1 = fig.add_subplot(1, 2, 1)
+        ax1.plot(range(len(self.loss_lst_trn)), self.loss_lst_trn)
+        ax1.set_title('DVRL loss')
+        ax2 = fig.add_subplot(1, 2, 2)
+        ax2.plot(range(len(self.total_reward_lst_trn)), self.total_reward_lst_trn)
+        ax2.set_title('DVRL rwd')
+        plt.savefig(self.test_fle_down_path + 'DVRL_RESULT_PLOT.png', dpi=300)
+        plt.close()
+
+        fig = plt.figure(constrained_layout=True)
+        ax3 = fig.add_subplot(1, 2, 1)
+        ax3.plot(range(len(self.lossLstLossGBASE)), self.lossLstLossGBASE)
+        ax3.set_title('GBASE loss')
+        ax4 = fig.add_subplot(1, 2, 2)
+        ax4.plot(range(len(self.lossLstLossDBASE)), self.lossLstLossDBASE)
+        ax4.set_title('DBASE loss')
+        plt.savefig(self.test_fle_down_path + 'BASE_RESULT_PLOT.png', dpi=300)
+        plt.close()
+
+        fig = plt.figure(constrained_layout=True)
+        ax5 = fig.add_subplot(1, 3, 1)
+        ax5.plot(range(len(self.lossLstLossG_GAN)), self.lossLstLossG_GAN)
+        ax5.set_title('G_GAN loss')
+        ax6 = fig.add_subplot(1, 3, 2)
+        ax6.plot(range(len(self.lossLstLossG_DVRL)), self.lossLstLossG_DVRL)
+        ax6.set_title('G_DVRL loss')
+        ax7 = fig.add_subplot(1, 3, 3)
+        ax7.plot(range(len(self.lossLstLossD)), self.lossLstLossD)
+        ax7.set_title('D loss')
+        plt.savefig(self.test_fle_down_path + 'GAN_LOSS_RESULT_PLOT.png', dpi=300)
+        plt.close()
+
+        fig = plt.figure(constrained_layout=True)
+        ax8 = fig.add_subplot(1, 4, 1)
+        ax8.plot(range(len(self.ProbFakeLstBASE)), self.ProbFakeLstBASE)
+        ax8.set_title('Base Pfake')
+        ax9 = fig.add_subplot(1, 4, 2)
+        ax9.plot(range(len(self.ProbRealLstBASE)), self.ProbRealLstBASE)
+        ax9.set_title('BASE Preal')
+        ax10 = fig.add_subplot(1, 4, 3)
+        ax10.plot(range(len(self.ProbFakeLst)), self.ProbFakeLst)
+        ax10.set_title('Pfake')
+        ax11 = fig.add_subplot(1, 4, 4)
+        ax11.plot(range(len(self.ProbRealLst)), self.ProbRealLst)
+        ax11.set_title('Preal')
+        plt.savefig(self.test_fle_down_path + 'GAN_PROB_RESULT_PLOT.png', dpi=300)
+        print('saving plot for DVRL complete!')
+        plt.close()
 
         plt.plot(range(len(self.reward4plotGBaseLst)),self.reward4plotGBaseLst,'r')
         plt.plot(range(len(self.reward4plotGLst)),self.reward4plotGLst,'b')
         plt.xlabel('Generated Img Number')
         plt.ylabel('Validation F1 Beta Score')
-
-        plt.savefig(self.test_fle_down_path + 'REWARD_COMPARE_RESULT.png', dpi=200)
+        plt.savefig(self.test_fle_down_path + 'REWARD_COMPARE_RESULT_'+str(num2plot)+'.png', dpi=200)
         print('saving plot complete!')
         plt.close()
+
+        plt.plot(range(len(self.reward4plotGBaseFiledLst)),self.reward4plotGBaseFiledLst,'r')
+        plt.plot(range(len(self.reward4plotGFiledLst)),self.reward4plotGFiledLst,'b')
+        plt.xlabel('Generated Img Number')
+        plt.ylabel('Validation F1 Beta Score')
+        plt.savefig(self.test_fle_down_path + 'REWARD_COMPARE_RESULT_FILTEREDVER_'+str(num2plot)+'.png', dpi=200)
+        print('saving plot complete!')
+        plt.close()
+
+
+        plt.plot(range(len(self.reward4plotGBaseLstAvg)), self.reward4plotGBaseLstAvg, 'r')
+        plt.plot(range(len(self.reward4plotGLstAvg)), self.reward4plotGLstAvg, 'b')
+        plt.xlabel('Generated Img Number')
+        plt.ylabel('Validation F1 Beta Score')
+        plt.savefig(self.test_fle_down_path + 'MEAN_REWARD_COMPARE_RESULT_' + str(num2plot) + '.png', dpi=200)
+        print('saving plot complete!')
+        plt.close()
+
+        plt.plot(range(len(self.reward4plotGBaseFiledLstAvg)), self.reward4plotGBaseFiledLstAvg, 'r')
+        plt.plot(range(len(self.reward4plotGFiledLstAvg)), self.reward4plotGFiledLstAvg, 'b')
+        plt.xlabel('Generated Img Number')
+        plt.ylabel('Validation F1 Beta Score')
+        plt.savefig(self.test_fle_down_path + 'MEAN_REWARD_COMPARE_RESULT_FILTEREDVER_' + str(num2plot) + '.png', dpi=200)
+        print('saving plot complete!')
+        plt.close()
+
+        self.flush_val_reward_lst()
+
+
         print('===========================================================================================')
         print('===========================================================================================')
         print('===========================================================================================')

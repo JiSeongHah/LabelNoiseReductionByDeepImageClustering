@@ -62,3 +62,10 @@ print(torch.square(x-tar))
 x = torch.randn(4,2)
 print(x)
 print(x[:,1])
+
+
+kkk = [i+1 for i in range(100)]
+print(kkk)
+
+KKK = list(map(lambda x:x*60,kkk))
+print(KKK)
