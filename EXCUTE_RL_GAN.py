@@ -16,6 +16,7 @@ class EXCUTE_RL_GAN():
                  theta_gpu_num,
                  theta_max_epch,
                  wayofdata,
+                 model_num_now,
                  noise_ratio,
                  split_ratio,
                  RL_save_range,
@@ -45,7 +46,13 @@ class EXCUTE_RL_GAN():
                  Num2Mul,
                  Num2Gen,
                  useDiff,
-                 DVRL_INTERVAL
+                 lr_G,
+                 lr_D,
+
+                 DVRL_INTERVAL,
+                 lsganA= 0,
+                 lsganB = 1,
+                 lsganC = 1
                  ):
 
         ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
@@ -53,8 +60,11 @@ class EXCUTE_RL_GAN():
         self.theta_b_size = theta_b_size
         self.gamma = gamma
         self.rl_lr = rl_lr
+        self.lr_G = lr_G
+        self.lr_D = lr_D
         self.reward_normalize = reward_normalize
         self.INNER_MAX_STEP = INNER_MAX_STEP
+        self.model_num_now = model_num_now
 
         self.test_fle_down_path = test_fle_down_path
         self.model_save_load_path = model_save_load_path
@@ -98,6 +108,10 @@ class EXCUTE_RL_GAN():
         self.Num2Mul = Num2Mul
 
         self.useDiff = useDiff
+
+        self.lsganA = lsganA
+        self.lsganB = lsganB
+        self.lsganC = lsganC
 
         ####################################VARS FOR CLASS : REINFORCE_TORCH ############################
         self.noise_ratio = noise_ratio
@@ -165,11 +179,11 @@ class EXCUTE_RL_GAN():
 
         try:
             print('self.model_save_load_path is ',self.model_save_load_path)
-            self.model_num_now = float((load_my_model(self.model_save_load_path).split('/')[0].split('.')[0]))
+            # self.model_num_now = float((load_my_model(self.model_save_load_path).split('/')[0].split('.')[0]))
             print('self.model_num_now is : ',self.model_num_now)
-            print('testttttttttttttt : ',load_my_model(self.model_save_load_path))
+            # print('testttttttttttttt : ',load_my_model(self.model_save_load_path+str(self.model_num_now)+'.pt' ))
 
-            REINFORCE_START = torch.load(load_my_model(self.model_save_load_path))
+            REINFORCE_START = torch.load(self.model_save_load_path+str(self.model_num_now)+'.pt'  )
             REINFORCE_START.model_num_now = self.model_num_now
             REINFORCE_START.updateVars(**vars)
             REINFORCE_START.loadSavedModel()
@@ -216,15 +230,26 @@ class EXCUTE_RL_GAN():
                                                  Num2Gen=self.Num2Gen,
                                                  Num2Mul=self.Num2Mul,
                                                  useDiff=self.useDiff,
-                                                 DVRL_INTERVAL = self.DVRL_INTERVAL
+                                                  lr_G=self.lr_G,
+                                                  lr_D=self.lr_D,
+                                                 DVRL_INTERVAL = self.DVRL_INTERVAL,
+                                                 lsganA= self.lsganA,
+                                                 lsganB = self.lsganB,
+                                                 lsganC = self.lsganC
                                                   )
 
             print('failedfailedfailedfailedfailedfailedfailedfailedfailedfailed')
             REINFORCE_START.updateVars(**vars)
 
 
+        RL_train_data_zero_little = (RL_train_data_zero_little )/255.0
+
+        RL_train_data_rest = (RL_train_data_rest )/255.0
+
         for i in range(10000):
             print(f'{i} th training RL start')
+
+
 
             REINFORCE_START.STARTTRNANDVAL(data=RL_train_data_zero_little,
                                            label=RL_train_label_zero_little,
@@ -247,7 +272,7 @@ class EXCUTE_RL_GAN():
                     print('saving RL model complete')
                 except:
                     print('saving model failed')
-            if i == 501:
+            if i == self.DVRL_INTERVAL*500:
                 print('breaking.........')
                 break
             print(f'{i} th training for RL done')

@@ -225,3 +225,58 @@ class Prediction_lit_4REINFORCE1(pl.LightningModule):
                           eps=1e-9  # 0으로 나누는 것을 방지하기 위한 epsilon 값
                           )
         return optimizer
+
+    def DelEveryVar(self):
+        del self.model
+
+        del self.save_dir
+
+
+        del self.beta4f1
+
+        del self.loss_lst_trn
+
+
+        del self.b_size_lst_trn_TRUE_POSITIVE
+        del self.b_size_lst_trn_TRUE_NEGATIVE
+        del self.b_size_lst_trn_FALSE_POSITIVE
+        del self.b_size_lst_trn_FALSE_NEGATIVE
+        del self.b_size_lst_trn_POSITIVE
+        del self.b_size_lst_trn_NEGATIVE
+
+
+        del self.loss_lst_val
+
+        del self.b_size_lst_val_TRUE_POSITIVE
+        del self.b_size_lst_val_TRUE_NEGATIVE
+        del self.b_size_lst_val_FALSE_POSITIVE
+        del self.b_size_lst_val_FALSE_NEGATIVE
+        del self.b_size_lst_val_POSITIVE
+        del self.b_size_lst_val_NEGATIVE
+
+        del self.avg_loss_lst_trn
+        del self.avg_acc_lst_trn_TRUE_POSITIVE
+        del self.avg_acc_lst_trn_TRUE_NEGATIVE
+        del self.avg_acc_lst_trn_FALSE_POSITIVE
+        del self.avg_acc_lst_trn_FALSE_NEGATIVE
+
+        del self.avg_acc_lst_trn_f1score
+        del self.avg_acc_lst_trn_PRECISION
+        del self.avg_acc_lst_trn_RECALL
+
+
+        del self.avg_loss_lst_val
+
+        del self.avg_acc_lst_val_TRUE_POSITIVE
+        del self.avg_acc_lst_val_TRUE_NEGATIVE
+        del self.avg_acc_lst_val_FALSE_POSITIVE
+        del self.avg_acc_lst_val_FALSE_NEGATIVE
+
+        del self.avg_acc_lst_val_f1score
+        del self.avg_acc_lst_val_PRECISION
+        del self.avg_acc_lst_val_RECALL
+
+        del self.num4epoch
+        del self.save_range
+        del self.total_reward_lst
+

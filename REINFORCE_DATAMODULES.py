@@ -25,9 +25,6 @@ class datamodule_4REINFORCE1(pl.LightningDataModule):
         self.val_inputs = val_data
         self.val_labels = val_label
 
-
-
-
     def prepare_data(self, stage=None):
         pass
 
@@ -36,8 +33,20 @@ class datamodule_4REINFORCE1(pl.LightningDataModule):
         self.train_labels = 0
         self.val_inputs = 0
         self.val_labels = 0
+
         pass
         #print('flushing data done.')
+
+    def DelEveryVar(self):
+
+        del self.train_inputs
+        del self.train_labels
+        del self.val_inputs
+        del self.val_labels
+        del self.batch_size
+        del self.batch_size_val
+        del self.number_of_epoch
+
 
     def setup(self, stage=None):
 

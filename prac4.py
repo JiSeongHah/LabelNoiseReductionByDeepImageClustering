@@ -110,27 +110,27 @@
 # 
 # print(yes_count,no_count)
 
-import torch
-x = torch.randn(5,3,2)
-print(x.size())
-print(x[3:].size())
+# import torch
+# x = torch.randn(5,3,2)
+# print(x.size())
+# print(x[3:].size())
 
-# import os
-# from save_funcs import createDirectory
-# import shutil
-#
-# rootPath = '/home/a286/hjs_dir1/dirRL/'
-# createDirectory('/home/a286/hjs_dir1/dirRLBackup/')
-# backupDir = '/home/a286/hjs_dir1/dirRLBackup/'
-# eachFolderLst = list(map(lambda x:x+'/',os.listdir(rootPath)))
-#
-# for eachFolder in eachFolderLst:
-#     eachFile = [file for file in os.listdir(rootPath+eachFolder) if file.endswith('.png')]
-#
-#     for each in eachFile:
-#         createDirectory(backupDir+eachFolder)
-#         shutil.copy(rootPath+eachFolder+each,backupDir+eachFolder+each)
-#         print('done')
+import os
+from save_funcs import createDirectory
+import shutil
+
+rootPath = '/home/a286/hjs_dir1/dirRL/'
+createDirectory('/home/a286/hjs_dir1/dirRLBackup2/')
+backupDir = '/home/a286/hjs_dir1/dirRLBackup2/'
+eachFolderLst = list(map(lambda x:x+'/',os.listdir(rootPath)))
+
+for eachFolder in eachFolderLst:
+    eachFile = [file for file in os.listdir(rootPath+eachFolder) if file.endswith('.png')]
+
+    for each in eachFile:
+        createDirectory(backupDir+eachFolder)
+        shutil.copy(rootPath+eachFolder+each,backupDir+eachFolder+each)
+        print('done')
 #
 
 # notRemoveLst = [str(10000*i)+'.pth' for i in range(1000)] + ['Result.png','sample_submission.csv']
