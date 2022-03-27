@@ -27,7 +27,7 @@ wayofdata = 'pureonly'
 noise_ratio = 1
 split_ratio = int(5923 * 0.05)
 master_dir = '/home/a286/'
-rl_b_size = 64
+rl_b_size = 32
 reward_method = 'last'
 dNoise = 100
 dHidden = 256
@@ -49,12 +49,15 @@ Num2Gen = 32
 useDiff = False
 DVRL_INTERVAL_LST = [32]
 
+lsganA = 0.1
+lsganB = 0.9
+lsganC = 1
 
 for beta4f1 in beta4f1Lst:
     for INNER_MAX_STEP in INNER_MAX_STEPLst:
         for DVRL_INTERVAL in DVRL_INTERVAL_LST:
 
-            specific_dir_name = mk_name(dirRL22='/',
+            specific_dir_name = mk_name(dirRL33='/',
                                         whichGanLoss=whichGanLoss,
                                         split_ratio=split_ratio,
                                         beta=beta4f1,

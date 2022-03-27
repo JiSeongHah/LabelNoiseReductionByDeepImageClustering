@@ -46,7 +46,7 @@ val_num2genLst = [i+1 for i in range(5)]
 Num2Gen = 32
 useDiff = False
 Num2Mul = 5
-DVRL_INTERVAL_LST = [32,64,128]
+DVRL_INTERVAL_LST = [16]
 
 lsganA = 0.1
 lsganB = 0.9
@@ -54,7 +54,7 @@ lsganC = 1
 
 for DVRL_INTERVAL in DVRL_INTERVAL_LST:
 
-    specific_dir_name = mk_name(dirRL4='/',
+    specific_dir_name = mk_name(dirRL5='/',
                                 whichGanLoss=whichGanLoss,
                                 split_ratio=split_ratio,
                                 beta=beta4f1,

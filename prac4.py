@@ -119,9 +119,9 @@ import os
 from save_funcs import createDirectory
 import shutil
 
-rootPath = '/home/a286/hjs_dir1/dirRL/'
-createDirectory('/home/a286/hjs_dir1/dirRLBackup2/')
-backupDir = '/home/a286/hjs_dir1/dirRLBackup2/'
+rootPath = '/home/a286/hjs_dir1/dirRL22/'
+createDirectory('/home/a286/hjs_dir1/dirRLBackup3/')
+backupDir = '/home/a286/hjs_dir1/dirRLBackup3/'
 eachFolderLst = list(map(lambda x:x+'/',os.listdir(rootPath)))
 
 for eachFolder in eachFolderLst:

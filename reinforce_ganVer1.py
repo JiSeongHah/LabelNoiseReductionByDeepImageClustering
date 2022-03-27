@@ -33,8 +33,8 @@ rl_b_size = 32
 reward_method = 'last'
 dNoise = 100
 dHidden = 256
-gan_trn_bSize = 32
-gan_val_bSize = 32
+gan_trn_bSize = 64
+gan_val_bSize = 64
 beta4f1Lst = [1000]
 max_step_trn = 100 #deprecated
 max_step_val = 100 #deprecated
@@ -50,7 +50,7 @@ val_num2genLst = [i+1 for i in range(5)]
 Num2Mul= 5
 Num2Gen = 32
 useDiff = False
-DVRL_INTERVAL_LST = [32]
+DVRL_INTERVAL_LST = [128]
 
 
 lsganA = 0.1
@@ -62,7 +62,7 @@ for beta4f1 in beta4f1Lst:
     for INNER_MAX_STEP in INNER_MAX_STEPLst:
         for DVRL_INTERVAL in DVRL_INTERVAL_LST:
 
-            specific_dir_name = mk_name(dirRL22='/',
+            specific_dir_name = mk_name(dirRL33='/',
                                         whichGanLoss=whichGanLoss,
                                         split_ratio=split_ratio,
                                         beta=beta4f1,

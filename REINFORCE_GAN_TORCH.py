@@ -1127,6 +1127,21 @@ class REINFORCE_GAN_TORCH(nn.Module):
             plt.clf()
             plt.close()
 
+            self.reward4plotG_DiffLst = [G-GBase for G,GBase in zip(self.reward4plotGLst,self.reward4plotGBaseLst) ]
+            plt.plot(range(len(self.reward4plotG_DiffLst)),self.reward4plotG_DiffLst)
+            plt.xlabel('Generated Img Number')
+            plt.ylabel('Validation F1 Beta Score')
+            plt.savefig(self.test_fle_down_path + 'REWARD_COMPARE_RESULT_DIFF_' + str(num2plot) + '.png', dpi=200)
+            print('saving plot complete!')
+            plt.cla()
+            plt.clf()
+            plt.close()
+            self.reward4plotG_DiffLst.clear()
+
+
+
+
+
             plt.plot(range(len(self.reward4plotGBaseFiledLst)), self.reward4plotGBaseFiledLst, 'r')
             plt.plot(range(len(self.reward4plotGFiledLst)), self.reward4plotGFiledLst, 'b')
             plt.xlabel('Generated Img Number')
@@ -1138,6 +1153,25 @@ class REINFORCE_GAN_TORCH(nn.Module):
             plt.clf()
             plt.close()
 
+            self.reward4plotG_Filed_DiffLst = [G - GBase for G, GBase in zip(self.reward4plotGFiledLst, self.reward4plotGBaseFiledLst)]
+            plt.plot(range(len(self.reward4plotG_Filed_DiffLst)), self.reward4plotG_Filed_DiffLst)
+            plt.xlabel('Generated Img Number')
+            plt.ylabel('Validation F1 Beta Score')
+            plt.savefig(self.test_fle_down_path + 'REWARD_COMPARE_RESULT_DIFF_FILTEREDVER' + str(num2plot) + '.png', dpi=200)
+            print('saving plot complete!')
+            plt.cla()
+            plt.clf()
+            plt.close()
+            self.reward4plotG_Filed_DiffLst.clear()
+
+
+
+
+
+
+
+
+
             plt.plot(range(len(self.reward4plotGBaseLstAvg)), self.reward4plotGBaseLstAvg, 'r')
             plt.plot(range(len(self.reward4plotGLstAvg)), self.reward4plotGLstAvg, 'b')
             plt.xlabel('Generated Img Number')
@@ -1147,6 +1181,26 @@ class REINFORCE_GAN_TORCH(nn.Module):
             plt.cla()
             plt.clf()
             plt.close()
+
+            self.reward4plotG_DiffLstAvg = [G - GBase for G, GBase in
+                                               zip(self.reward4plotGLstAvg, self.reward4plotGBaseLstAvg)]
+            plt.plot(range(len(self.reward4plotG_DiffLstAvg)), self.reward4plotG_DiffLstAvg)
+            plt.xlabel('Generated Img Number')
+            plt.ylabel('Validation F1 Beta Score')
+            plt.savefig(self.test_fle_down_path + 'REWARD_COMPARE_RESULT_AVG_DIFF_' + str(num2plot) + '.png', dpi=200)
+            print('saving plot complete!')
+            plt.cla()
+            plt.clf()
+            plt.close()
+            self.reward4plotG_DiffLstAvg.clear()
+
+
+
+
+
+
+
+
 
             plt.plot(range(len(self.reward4plotGBaseFiledLstAvg)), self.reward4plotGBaseFiledLstAvg, 'r')
             plt.plot(range(len(self.reward4plotGFiledLstAvg)), self.reward4plotGFiledLstAvg, 'b')
@@ -1158,6 +1212,23 @@ class REINFORCE_GAN_TORCH(nn.Module):
             plt.cla()
             plt.clf()
             plt.close()
+
+
+            self.reward4plotG_Filed_DiffLstAvg = [G - GBase for G, GBase in
+                                               zip(self.reward4plotGFiledLstAvg, self.reward4plotGBaseFiledLstAvg)]
+            plt.plot(range(len(self.reward4plotG_Filed_DiffLstAvg)), self.reward4plotG_Filed_DiffLstAvg)
+            plt.xlabel('Generated Img Number')
+            plt.ylabel('Validation F1 Beta Score')
+            plt.savefig(self.test_fle_down_path + 'REWARD_COMPARE_RESULT_AVG_DIFF_FILTEREDVER' + str(num2plot) + '.png', dpi=200)
+            print('saving plot complete!')
+            plt.cla()
+            plt.clf()
+            plt.close()
+            self.reward4plotG_Filed_DiffLstAvg.clear()
+
+
+
+
 
             self.flush_val_reward_lst()
 
