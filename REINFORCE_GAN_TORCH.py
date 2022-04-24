@@ -35,7 +35,7 @@ from REINFORCE_DATAMODULES import datamodule_4REINFORCE1
 from REINFORCE_INNER_MODELS import Prediction_lit_4REINFORCE1
 from MK_NOISED_DATA import mk_noisy_data
 from save_funcs import load_my_model
-import gc
+# import gc
 import tracemalloc
 
 class REINFORCE_GAN_TORCH(nn.Module):
@@ -232,6 +232,11 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
         ##########################VARS for RL model##################################
 
+        self.theta_model_part = Prediction_lit_4REINFORCE1(save_dir=self.test_fle_down_path,
+                                                      save_range=10,
+                                                      beta4f1=self.beta4f1)
+        
+
 
         test_dataset = MNIST(self.test_fle_down_path, train=False, download=True)
 
@@ -393,14 +398,12 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
                 return lossG
 
-    def step(self, action,PLOT=True):
+    def step(self, action,val=False,PLOT=True):
 
         inputs_data4Theta, inputs_label4Theta = action[0].clone().detach(), action[1].clone().detach()
         inputs_label4Theta = inputs_label4Theta.clone().detach().long()
 
-        theta_model_part = Prediction_lit_4REINFORCE1(save_dir=self.test_fle_down_path,
-                                                      save_range=10,
-                                                      beta4f1=self.beta4f1)
+        
 
         dm4Theta = datamodule_4REINFORCE1(batch_size=self.theta_b_size,
                                     total_tdata=inputs_data4Theta,
@@ -420,76 +423,154 @@ class REINFORCE_GAN_TORCH(nn.Module):
                                   num_sanity_val_steps=0,
                                   enable_model_summary=None)
 
-        time2 = time.time()
-        print('-----------------------------------------------------------------------------------')
+        if val == True:
 
-        trainer_part.fit(theta_model_part, dm4Theta)
+            theta_model_part4val = Prediction_lit_4REINFORCE1(save_dir=self.test_fle_down_path,
+                                                      save_range=10,
+                                                      beta4f1=self.beta4f1)
 
-        trainer_part.validate(theta_model_part,dm4Theta)
+            time2 = time.time()
+            print('-----------------------------------------------------------------------------------')
 
-        del trainer_part
-        theta_model_part.flush_lst()
+            trainer_part.fit(theta_model_part4val, dm4Theta)
 
-        if PLOT == True:
-            pass
+            trainer_part.validate(theta_model_part4val,dm4Theta)
 
+            del trainer_part
+            theta_model_part4val.flush_lst()
 
-            # fig = plt.figure()
-            # ax1 = fig.add_subplot(2, 4, 1)
-            # ax1.plot(range(len(theta_model_part.avg_loss_lst_trn)), theta_model_part.avg_loss_lst_trn)
-            # ax1.set_title('train loss')
-            # ax2 = fig.add_subplot(2, 4, 2)
-            # ax2.plot(range(len(theta_model_part.avg_acc_lst_trn_PRECISION)), theta_model_part.avg_acc_lst_trn_PRECISION)
-            # ax2.set_title('train PRECISION')
-            # ax3 = fig.add_subplot(2, 4, 3)
-            # ax3.plot(range(len(theta_model_part.avg_acc_lst_trn_RECALL)), theta_model_part.avg_acc_lst_trn_RECALL)
-            # ax3.set_title('train RECALL')
-            # ax4 = fig.add_subplot(2, 4, 4)
-            # ax4.plot(range(len(theta_model_part.avg_acc_lst_trn_f1score)), theta_model_part.avg_acc_lst_trn_f1score)
-            # ax4.set_title('train F1 SCORE')
-            #
-            # ax5 = fig.add_subplot(2, 4, 5)
-            # ax5.plot(range(len(theta_model_part.avg_loss_lst_val)), theta_model_part.avg_loss_lst_val)
-            # ax5.set_title('val loss')
-            # ax6 = fig.add_subplot(2, 4, 6)
-            # ax6.plot(range(len(theta_model_part.avg_acc_lst_val_PRECISION)), theta_model_part.avg_acc_lst_val_PRECISION)
-            # ax6.set_title('val PRECISION')
-            # ax7 = fig.add_subplot(2, 4, 7)
-            # ax7.plot(range(len(theta_model_part.avg_acc_lst_val_RECALL)), theta_model_part.avg_acc_lst_val_RECALL)
-            # ax7.set_title('val RECALL')
-            # ax8 = fig.add_subplot(2, 4, 8)
-            # ax8.plot(range(len(theta_model_part.avg_acc_lst_val_f1score)), theta_model_part.avg_acc_lst_val_f1score)
-            # ax8.set_title('val F1 SCORE')
-            #
-            # plt.savefig(self.test_fle_down_path + 'inner_model_result.png', dpi=200)
-            # print('saving inner plot complete!')
-            # plt.close()
+            if PLOT == True:
+                pass
 
 
-        if self.reward_method == 'mean':
-            reward = -1+ copy.deepcopy(float(np.mean(theta_model_part.avg_acc_lst_val_f1score[-self.conv_crit_num:])))
-        if self.reward_method == 'last':
-            reward = -1+ float(theta_model_part.avg_acc_lst_val_f1score[-1:][0])
+                # fig = plt.figure()
+                # ax1 = fig.add_subplot(2, 4, 1)
+                # ax1.plot(range(len(theta_model_part.avg_loss_lst_trn)), theta_model_part.avg_loss_lst_trn)
+                # ax1.set_title('train loss')
+                # ax2 = fig.add_subplot(2, 4, 2)
+                # ax2.plot(range(len(theta_model_part.avg_acc_lst_trn_PRECISION)), theta_model_part.avg_acc_lst_trn_PRECISION)
+                # ax2.set_title('train PRECISION')
+                # ax3 = fig.add_subplot(2, 4, 3)
+                # ax3.plot(range(len(theta_model_part.avg_acc_lst_trn_RECALL)), theta_model_part.avg_acc_lst_trn_RECALL)
+                # ax3.set_title('train RECALL')
+                # ax4 = fig.add_subplot(2, 4, 4)
+                # ax4.plot(range(len(theta_model_part.avg_acc_lst_trn_f1score)), theta_model_part.avg_acc_lst_trn_f1score)
+                # ax4.set_title('train F1 SCORE')
+                #
+                # ax5 = fig.add_subplot(2, 4, 5)
+                # ax5.plot(range(len(theta_model_part.avg_loss_lst_val)), theta_model_part.avg_loss_lst_val)
+                # ax5.set_title('val loss')
+                # ax6 = fig.add_subplot(2, 4, 6)
+                # ax6.plot(range(len(theta_model_part.avg_acc_lst_val_PRECISION)), theta_model_part.avg_acc_lst_val_PRECISION)
+                # ax6.set_title('val PRECISION')
+                # ax7 = fig.add_subplot(2, 4, 7)
+                # ax7.plot(range(len(theta_model_part.avg_acc_lst_val_RECALL)), theta_model_part.avg_acc_lst_val_RECALL)
+                # ax7.set_title('val RECALL')
+                # ax8 = fig.add_subplot(2, 4, 8)
+                # ax8.plot(range(len(theta_model_part.avg_acc_lst_val_f1score)), theta_model_part.avg_acc_lst_val_f1score)
+                # ax8.set_title('val F1 SCORE')
+                #
+                # plt.savefig(self.test_fle_down_path + 'inner_model_result.png', dpi=200)
+                # print('saving inner plot complete!')
+                # plt.close()
+
+
+            if self.reward_method == 'mean':
+                reward = -1+ copy.deepcopy(float(np.mean(theta_model_part4val.avg_acc_lst_val_f1score[-self.conv_crit_num:])))
+            if self.reward_method == 'last':
+                reward = -1+ float(theta_model_part4val.avg_acc_lst_val_f1score[-1:][0])
 
 
 
-        done = True
-        info = 'step complete'
+            done = True
+            info = 'step complete'
 
-        theta_model_part.flush_lst()
-        theta_model_part.DelEveryVar()
-        dm4Theta.DelEveryVar()
-        del theta_model_part
-        #del trainer_part
-        del dm4Theta
-        del inputs_data4Theta
-        del inputs_label4Theta
-        print('----------------------------------------------------------------------------------------')
-        print('')
+            dm4Theta.DelEveryVar()
 
-        gc.collect()
+            theta_model_part4val.DelEveryVar()
 
-        return reward, done, info
+            del theta_model_part4val
+            del dm4Theta
+            del inputs_data4Theta
+            del inputs_label4Theta
+            print('----------------------------------------------------------------------------------------')
+            print('')
+
+            # gc.collect()
+
+            return reward, done, info
+
+
+        if val == False:
+
+
+            time2 = time.time()
+            print('-----------------------------------------------------------------------------------')
+
+            trainer_part.fit(self.theta_model_part, dm4Theta)
+
+            trainer_part.validate(self.theta_model_part,dm4Theta)
+
+            del trainer_part
+            self.theta_model_part.flush_lst()
+
+            if PLOT == True:
+                pass
+
+
+                # fig = plt.figure()
+                # ax1 = fig.add_subplot(2, 4, 1)
+                # ax1.plot(range(len(theta_model_part.avg_loss_lst_trn)), theta_model_part.avg_loss_lst_trn)
+                # ax1.set_title('train loss')
+                # ax2 = fig.add_subplot(2, 4, 2)
+                # ax2.plot(range(len(theta_model_part.avg_acc_lst_trn_PRECISION)), theta_model_part.avg_acc_lst_trn_PRECISION)
+                # ax2.set_title('train PRECISION')
+                # ax3 = fig.add_subplot(2, 4, 3)
+                # ax3.plot(range(len(theta_model_part.avg_acc_lst_trn_RECALL)), theta_model_part.avg_acc_lst_trn_RECALL)
+                # ax3.set_title('train RECALL')
+                # ax4 = fig.add_subplot(2, 4, 4)
+                # ax4.plot(range(len(theta_model_part.avg_acc_lst_trn_f1score)), theta_model_part.avg_acc_lst_trn_f1score)
+                # ax4.set_title('train F1 SCORE')
+                #
+                # ax5 = fig.add_subplot(2, 4, 5)
+                # ax5.plot(range(len(theta_model_part.avg_loss_lst_val)), theta_model_part.avg_loss_lst_val)
+                # ax5.set_title('val loss')
+                # ax6 = fig.add_subplot(2, 4, 6)
+                # ax6.plot(range(len(theta_model_part.avg_acc_lst_val_PRECISION)), theta_model_part.avg_acc_lst_val_PRECISION)
+                # ax6.set_title('val PRECISION')
+                # ax7 = fig.add_subplot(2, 4, 7)
+                # ax7.plot(range(len(theta_model_part.avg_acc_lst_val_RECALL)), theta_model_part.avg_acc_lst_val_RECALL)
+                # ax7.set_title('val RECALL')
+                # ax8 = fig.add_subplot(2, 4, 8)
+                # ax8.plot(range(len(theta_model_part.avg_acc_lst_val_f1score)), theta_model_part.avg_acc_lst_val_f1score)
+                # ax8.set_title('val F1 SCORE')
+                #
+                # plt.savefig(self.test_fle_down_path + 'inner_model_result.png', dpi=200)
+                # print('saving inner plot complete!')
+                # plt.close()
+
+
+            if self.reward_method == 'mean':
+                reward = -1+ copy.deepcopy(float(np.mean(self.theta_model_part.avg_acc_lst_val_f1score[-self.conv_crit_num:])))
+            if self.reward_method == 'last':
+                reward = -1+ float(self.theta_model_part.avg_acc_lst_val_f1score[-1:][0])
+
+
+
+            done = True
+            info = 'step complete'
+
+            dm4Theta.DelEveryVar()
+
+            del dm4Theta
+            del inputs_data4Theta
+            del inputs_label4Theta
+            print('----------------------------------------------------------------------------------------')
+            print('')
+
+            # gc.collect()
+
+            return reward, done, info
 
 
     def training_step(self, td2gen, tl2gen,RL_td_rest,RL_tl_rest,trainingNum):
@@ -725,7 +806,7 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
                 for i in range(self.Num2Gen):
 
-                    noiseZ4Gen = self.get_gaussianNoise_z(self.gan_trn_bSize)
+                    noiseZ4Gen = self.get_gaussianNoise_z(self.Num2Mul*self.gan_trn_bSize)
                     GeneratedImg = self.REINFORCE_GAN_G(noiseZ4Gen)
 
                     GeneratedImg = GeneratedImg.clone().detach()
@@ -858,7 +939,7 @@ class REINFORCE_GAN_TORCH(nn.Module):
         self.REINFORCE_GAN_DBASE.eval()
         self.REINFORCE_DVRL.eval()
 
-        gc.collect()
+        # gc.collect()
 
         trainingDone = 'trainingDone'
 
@@ -890,18 +971,14 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
             with torch.set_grad_enabled(False):
 
-                for i in range(val_num2gen):
+                noiseZ = self.get_gaussianNoise_z(self.Num2Mul*self.gan_trn_bSize*val_num2gen)
 
-                    noiseZ = self.get_gaussianNoise_z(self.Num2Mul*self.gan_trn_bSize)
+                GeneratedImg = self.REINFORCE_GAN_GBASE(noiseZ)
 
-                    GeneratedImg = self.REINFORCE_GAN_GBASE(noiseZ)
-                    if val_num2gen == 1 and i ==0:
-                        imshowDone= self.imshow_grid(img=255.0*GeneratedImg[:5],saveDir=self.test_fle_down_path+'BASE_',showNum=1,plotNum=valNum)
+                if val_num2gen == 1:
+                    imshowDone= self.imshow_grid(img=255.0*GeneratedImg[:5],saveDir=self.test_fle_down_path+'BASE_',showNum=1,plotNum=valNum)
 
-                    if i == 0:
-                        RL_td_zero = vd2gen
-                    else:
-                        RL_td_zero = torch.cat((RL_td_zero,GeneratedImg.clone().detach()),dim=0)
+                RL_td_zero = torch.cat((vd2gen,GeneratedImg.clone().detach()),dim=0)
 
                 RL_td_zero = RL_td_zero.clone().detach()
                 RL_tl_zero = torch.zeros(RL_td_zero.size(0))
@@ -917,7 +994,7 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
                     action4step = [input_data4BASE,input_label4BASE]
 
-                    REWARD_BASE,_,_ = self.step(action=action4step,PLOT= False)
+                    REWARD_BASE,_,_ = self.step(action=action4step,PLOT= False,val=True)
                     self.reward4plotGBaseLst.append(round(float(REWARD_BASE),3))
 
 
@@ -952,7 +1029,7 @@ class REINFORCE_GAN_TORCH(nn.Module):
                 action4step = [torch.cat((RL_td_rest.clone().detach(), good_data_tensor[data_filter_tensor].clone().detach()), dim=0),
                  torch.cat((RL_tl_rest.clone().detach(), good_label_tensor[data_filter_tensor].clone().detach()), dim=0).long()]
 
-                REWARD_BASE_FILTERDVER,_,_ = self.step(action=action4step,PLOT=False)
+                REWARD_BASE_FILTERDVER,_,_ = self.step(action=action4step,PLOT=False,val=True)
                 self.reward4plotGBaseFiledLst.append(round(float(REWARD_BASE_FILTERDVER),3))
 
             del RL_tl_zero
@@ -978,19 +1055,15 @@ class REINFORCE_GAN_TORCH(nn.Module):
 
             with torch.set_grad_enabled(False):
 
-                for i in range(val_num2gen):
+                noiseZ = noiseZ.clone().detach()
 
-                    noiseZ = self.get_gaussianNoise_z(self.Num2Mul*self.gan_trn_bSize)
+                GeneratedImg = self.REINFORCE_GAN_G(noiseZ)
 
-                    GeneratedImg = self.REINFORCE_GAN_G(noiseZ)
+                if val_num2gen == 1:
+                    self.imshow_grid(img=255.0*GeneratedImg[:5],saveDir=self.test_fle_down_path+'COMPARE_',showNum=1,plotNum=valNum)
 
-                    if val_num2gen == 1 and i ==0:
-                        self.imshow_grid(img=255.0*GeneratedImg[:5],saveDir=self.test_fle_down_path+'COMPARE_',showNum=1,plotNum=valNum)
 
-                    if i == 0:
-                        RL_td_zero = vd2gen
-                    else:
-                        RL_td_zero = torch.cat((RL_td_zero, GeneratedImg.clone().detach()), dim=0)
+                RL_td_zero = torch.cat((vd2gen, GeneratedImg.clone().detach()), dim=0)
 
                 RL_td_zero = RL_td_zero.clone().detach()
                 RL_tl_zero = torch.zeros(RL_td_zero.size(0))
@@ -1003,7 +1076,7 @@ class REINFORCE_GAN_TORCH(nn.Module):
                     action4step = [torch.cat((RL_td_rest, RL_td_zero), dim=0),
                      torch.cat((RL_tl_rest, RL_tl_zero), dim=0).long()]
 
-                    REWARD_G,_,_ = self.step(action=action4step,PLOT=False)
+                    REWARD_G,_,_ = self.step(action=action4step,PLOT=False,val=True)
 
                     self.reward4plotGLst.append(round(float(REWARD_G),3))
 
@@ -1038,7 +1111,7 @@ class REINFORCE_GAN_TORCH(nn.Module):
                 action4step = [torch.cat((RL_td_rest.clone().detach(), good_data_tensor[data_filter_tensor].clone().detach()), dim=0),
                  torch.cat((RL_tl_rest.clone().detach(), good_label_tensor[data_filter_tensor].clone().detach()), dim=0).long()]
 
-                REWARD_G_FILTERDVER,_,_ = self.step(action=action4step,PLOT=False)
+                REWARD_G_FILTERDVER,_,_ = self.step(action=action4step,PLOT=False,val=True)
                 self.reward4plotGFiledLst.append(round(float(REWARD_G_FILTERDVER),3))
 
             del RL_tl_zero
@@ -1075,7 +1148,7 @@ class REINFORCE_GAN_TORCH(nn.Module):
         self.REINFORCE_GAN_DBASE.train()
         self.REINFORCE_DVRL.train()
 
-        gc.collect()
+        # gc.collect()
 
         validationDone = 'validationDone'
 

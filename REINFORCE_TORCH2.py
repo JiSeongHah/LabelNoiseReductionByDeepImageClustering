@@ -274,7 +274,7 @@ class REINFORCE_TORCH(nn.Module):
         print('train_dataloading.......')
         train_data = TensorDataset(RL_td_zero, RL_tl_zero)
         train_sampler = RandomSampler(train_data)
-        train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=self.rl_b_size, num_workers=0)
+        train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=self.rl_b_size, num_workers=2)
         print('train_dataloading done....')
 
         print('train starttt!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
@@ -343,8 +343,8 @@ class REINFORCE_TORCH(nn.Module):
                 self.optimizer.step()
                 print('gradient optimization done')
 
-                print(f'self.loss_lst_trn is : {self.loss_lst_trn}')
-                print(f'self.total_rwd_lst_trn is : {self.total_reward_lst_trn}')
+                # print(f'self.loss_lst_trn is : {self.loss_lst_trn}')
+                # print(f'self.total_rwd_lst_trn is : {self.total_reward_lst_trn}')
 
                 fig = plt.figure()
                 ax1 = fig.add_subplot(1, 2, 1)
@@ -355,7 +355,7 @@ class REINFORCE_TORCH(nn.Module):
                 ax2.set_title('reward')
 
 
-                print(f'self.test_fle_down_path is : {self.test_fle_down_path}testplot.png')
+                # print(f'self.test_fle_down_path is : {self.test_fle_down_path}testplot.png')
                 plt.savefig(self.test_fle_down_path+'RL_reward_plot.png', dpi=200)
                 print('saving plot complete!')
                 plt.close()
@@ -371,7 +371,7 @@ class REINFORCE_TORCH(nn.Module):
         RL_tl_rest = torch.ones_like(torch.from_numpy(RL_tl_rest))
 
 
-        LowLst = [5*i/100 for i in range(16)]
+        LowLst = [i for i in range(5)]
 
         criterionResultLst= []
         dvrlResultLst = []
@@ -463,7 +463,8 @@ class REINFORCE_TORCH(nn.Module):
 
         for Low in LowLst:
 
-            lowRemovedTensor = torch.ge(datavalueTensor,Low)
+            # lowRemovedTensor = torch.ge(datavalueTensor,Low)
+            lowRemovedTensor = torch.bernoulli(datavalueTensor) > 0
 
             print(f'min of datavalue is : {torch.min(datavalueTensor)}')
 
@@ -507,6 +508,7 @@ class REINFORCE_TORCH(nn.Module):
 
         plt.plot(LowLst,dvrlResultLst,'r')
         plt.plot(LowLst, criterionResultLst,'b')
+        plt.xlabel('iteration')
         plt.savefig(self.test_fle_down_path+'rewardDiffwithLow'+'.png',dpi=200)
         print(f'saving plot for innnerStep : {self.INNER_MAX_STEP} for {valNum} done')
         plt.close()

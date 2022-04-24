@@ -157,8 +157,6 @@ class EXCUTE_RL_GAN():
         RL_train_data_rest = torch.from_numpy(RL_train_data_rest).unsqueeze(1)
         RL_train_label_rest = torch.from_numpy(RL_train_label_rest)
 
-
-
         print('spliting train data done')
         print('start val data job....')
 

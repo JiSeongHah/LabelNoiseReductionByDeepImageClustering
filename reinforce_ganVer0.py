@@ -26,13 +26,13 @@ wayofdata = 'pureonly'
 noise_ratio = 1
 split_ratio = int(5923 * 0.05)
 master_dir = '/home/a286winteriscoming/'
-rl_b_size = 32
+rl_b_size = 2000
 reward_method = 'last'
 dNoise = 100
 dHidden = 256
 gan_trn_bSize = 64
 gan_val_bSize = 64
-beta4f1 = 1000
+beta4f1 = 10
 max_step_trn = 100 #deprecated
 max_step_val = 100 #deprecated
 whichGanLoss= 'lsgan'
@@ -45,7 +45,7 @@ DVRLLoadNum = 0
 val_num2genLst = [i+1 for i in range(5)]
 Num2Gen = 32
 useDiff = False
-Num2Mul = 5
+Num2Mul = 10
 DVRL_INTERVAL_LST = [16]
 
 lsganA = 0.1
@@ -54,7 +54,7 @@ lsganC = 1
 
 for DVRL_INTERVAL in DVRL_INTERVAL_LST:
 
-    specific_dir_name = mk_name(dirRL5='/',
+    specific_dir_name = mk_name(dirRL7='/',
                                 whichGanLoss=whichGanLoss,
                                 split_ratio=split_ratio,
                                 beta=beta4f1,
