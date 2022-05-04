@@ -13,18 +13,14 @@ from tqdm import tqdm
 import torch.nn.functional as F
 import time
 
-class innerPredictor(nn.Module):
+class innerTestPredictor(nn.Module):
     def __init__(self,
                  plotSaveDir,
-                 bSizeTrn,
-                 bSizeVal,
-                 LinNum,
-                 s,
-                 m,
-                 gpuUse,
-                 MaxStepTrn,
-                 MaxStepVal,
-                 iterToAccumul,
+                 ModelName,
+                 bSizeTrn=32,
+                 bSizeVal=32,
+                 gpuUse=True,
+                 iterToAccumul=2,
                  beta4f1=100):
         super(innerPredictor, self).__init__()
 
@@ -33,14 +29,13 @@ class innerPredictor(nn.Module):
         self.num4epoch = 0
 
         self.plotSaveDir = plotSaveDir
+        self.ModelName = ModelName
 
         self.total_reward_lst = []
 
         self.bSizeTrn = bSizeTrn
         self.bSizeVal = bSizeVal
-        self.LinNum = LinNum
-        self.s = s
-        self.m = m
+
         self.gpuUse = gpuUse
         self.MaxStepTrn = MaxStepTrn
         self.MaxStepVal = MaxStepVal
@@ -57,13 +52,8 @@ class innerPredictor(nn.Module):
 
         self.MyBackbone = ResNet(block=BasicBlock,
                                  num_blocks=[2, 2, 2, 2],
-                                 num_classes=512,
+                                 num_classes=2,
                                  mnst_ver=True)
-
-        self.MyArc = ArcMarginProduct(in_feature=self.LinNum,
-                                      out_feature=2,
-                                      s=self.s,
-                                      m =self.m)
 
         self.optimizer = Adam([{'params':self.MyBackbone.parameters()},
                               {'params':self.MyArc.parameters()}],
@@ -113,8 +103,8 @@ class innerPredictor(nn.Module):
         self.avg_acc_lst_val_PRECISION = []
         self.avg_acc_lst_val_RECALL = []
 
-        self.MyBackbone.to(self.device)
-        self.MyArc.to(self.device)
+
+
 
     def setDataLoader(self,trnInput,trnLabel,valInput,valLabel):
 
@@ -140,12 +130,6 @@ class innerPredictor(nn.Module):
         output = self.MyBackbone(x.float())
 
         return output
-
-    def forwardArc(self,x,label):
-
-        out = self.MyArc(x,label)
-
-        return out
 
     def calLoss(self,pred,label):
 
@@ -200,8 +184,9 @@ class innerPredictor(nn.Module):
 
     def trainingStep(self):
 
+        self.MyBackbone.to(self.device)
         self.MyBackbone.train()
-        self.MyArc.train()
+
         TDataLoader = tqdm(self.train_dataloader)
 
         self.optimizer.zero_grad()
@@ -216,8 +201,7 @@ class innerPredictor(nn.Module):
                 bInput = bInput.to(self.device)
                 bLabel = bLabel.to(self.device)
 
-                bFeature = self.forward(bInput)
-                bLogit = self.forwardArc(bFeature,bLabel)
+                bLogit = self.forward(bInput)
                 bLogit = bLogit.cpu()
                 bLabel = bLabel.cpu()
 
@@ -261,12 +245,12 @@ class innerPredictor(nn.Module):
 
         torch.set_grad_enabled(False)
         self.MyBackbone.eval()
-        self.MyArc.eval()
+        self.MyBackbone.to('cpu')
+
 
     def validatingStep(self):
-
+        self.MyBackbone.to(self.device)
         self.MyBackbone.eval()
-        self.MyArc.eval()
         self.optimizer.zero_grad()
 
         VDataLoader= tqdm(self.val_dataloader)
@@ -277,8 +261,7 @@ class innerPredictor(nn.Module):
                 valBInput = valBInput.to(self.device)
                 valBLabel = valBLabel.to(self.device)
 
-                valBFeature = self.forward(valBInput)
-                valBLogit = self.forwardArc(valBFeature,valBLabel)
+                valBLogit = self.forward(valBInput)
                 valBLogit = valBLogit.cpu()
                 valBLabel = valBLabel.cpu()
 
@@ -311,7 +294,8 @@ class innerPredictor(nn.Module):
 
         torch.set_grad_enabled(True)
         self.MyBackbone.train()
-        self.MyArc.train()
+        self.MyBackbone.to('cpu')
+
 
     def validatingStepEnd(self):
 
@@ -388,7 +372,7 @@ class innerPredictor(nn.Module):
         ax8.plot(range(len(self.avg_acc_lst_val_f1score)), self.avg_acc_lst_val_f1score)
         ax8.set_title('val F1 SCORE')
 
-        plt.savefig(self.plotSaveDir + 'inner_model_result.png', dpi=200)
+        plt.savefig(self.plotSaveDir + str(self.ModelName)+'inner_model_result.png', dpi=200)
         print('saving inner plot complete!')
         plt.close()
 
@@ -417,53 +401,9 @@ class innerPredictor(nn.Module):
 
         self.validatingStep()
 
-    def getFeatures(self,Inputs,Labels=None):
+    def GETSCORE(self):
 
-        self.MyBackbone.eval()
-        self.optimizer.zero_grad()
-
-        InputData = TensorDataset(Inputs,Labels)
-        DATALOADER = tqdm(DataLoader(InputData,shuffle=False,batch_size=1))
-
-        ResultTensor = []
-        LabelTensor = []
-
-        with torch.set_grad_enabled(False):
-
-            if Labels != None:
-
-                for idx,(bInput,bLabel) in enumerate(DATALOADER):
-
-                    bFeature = self.MyBackbone(bInput)
-                    bFeature = bFeature.cpu()
-
-                    ResultTensor.append(F.normalize(bFeature.clone().detach()))
-                    LabelTensor.append(bLabel)
-
-                ResultTensor = torch.cat(ResultTensor)
-                LabelTensor = torch.cat(LabelTensor)
-
-                self.optimizer.zero_grad()
-                self.MyBackbone.train()
-
-                return ResultTensor, LabelTensor
-
-            else:
-                for idx,(bInput) in enumerate(DATALOADER):
-
-                    bFeature = self.MyBackbone(bInput)
-                    bFeature = bFeature.cpu()
-
-                    ResultTensor.append(F.normalize(bFeature.clone().detach()))
-
-
-                ResultTensor = torch.cat(ResultTensor)
-
-                self.optimizer.zero_grad()
-                self.MyBackbone.train()
-
-                return ResultTensor
-
+        return torch.mean(self.avg_acc_lst_val_f1score[-10:])
 
 
 
