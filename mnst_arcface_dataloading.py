@@ -39,11 +39,11 @@ def func_getData(Dir):
 
 
 
-    return RL_train_data_rest,\
+    return RL_train_data_rest.float(),\
            RL_train_label_rest,\
-           RL_train_data_zero,\
+           RL_train_data_zero.float(),\
            RL_train_label_zero,\
-           RL_val_data_rest,\
+           RL_val_data_rest.float(),\
            RL_val_labels_rest,\
-           RL_val_data_zero,\
+           RL_val_data_zero.float(),\
            RL_val_labels_zero

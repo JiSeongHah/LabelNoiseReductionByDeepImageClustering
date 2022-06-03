@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch.nn import Parameter
 import math
+from torchvision import models
 
 class CNN(torch.nn.Module):
 
@@ -415,3 +416,121 @@ class ganDiscriminator1(torch.nn.Module):
 
         return out
 
+class MyBYOLMODEL(nn.Module):
+    def __init__(self,modelKind,backboneOutFeature,LinNum,usePretrained=True):
+        super(MyBYOLMODEL,self).__init__()
+
+        # self.backboneOutFeature = backboneOutFeature
+        # self.LinNum = LinNum
+        # self.usePretrained = usePretrained
+
+        self.backbone = models.resnet50(pretrained=True)
+
+        # if modelKind == 'effnet-b0':
+        #     print('loading effnet-b0')
+        #     self.backbone = models.efficientnet_b0(pretrained=self.usePretrained,num_classes=self.backboneOutFeature)
+        #     self.backbone.avgpool= GeM()
+        #     self.backbone.classifier = nn.Identity()
+        #
+        # elif modelKind == 'effnet-b1':
+        #     print('loading effnet-b1')
+        #     self.backbone = models.efficientnet_b1(pretrained=self.usePretrained,num_classes=self.backboneOutFeature)
+        #     self.backbone.avgpool = GeM()
+        #     self.backbone.classifier = nn.Identity()
+        #
+        # elif modelKind == 'effnet-b2':
+        #     print('loading effnet-b2')
+        #     self.backbone = models.efficientnet_b2(pretrained=self.usePretrained,num_classes=self.backboneOutFeature)
+        #     self.backbone.avgpool = GeM()
+        #     self.backbone.classifier = nn.Identity()
+        #
+        # elif modelKind == 'effnet-b3':
+        #     print('loading effnet-b3')
+        #     self.backbone = models.efficientnet_b3(pretrained=self.usePretrained,num_classes=self.backboneOutFeature)
+        #     self.backbone.avgpool = GeM()
+        #     self.backbone.classifier = nn.Identity()
+        #
+        # elif modelKind == 'effnet-b4':
+        #     print('loading effnet-b4')
+        #     self.backbone = models.efficientnet_b4(pretrained=self.usePretrained,num_classes=self.backboneOutFeature)
+        #     self.backbone.avgpool = GeM()
+        #     self.backbone.classifier = nn.Identity()
+        #
+        # elif modelKind == 'effnet-b5':
+        #     print('loading effnet-b5')
+        #     self.backbone = models.efficientnet_b5(pretrained=self.usePretrained,num_classes=self.backboneOutFeature)
+        #     self.backbone.avgpool = GeM()
+        #     self.backbone.classifier = nn.Identity()
+        #
+        # elif modelKind == 'effnet-b6':
+        #     print('loading effnet-b6')
+        #     self.backbone = models.efficientnet_b6(pretrained=self.usePretrained,num_classes=self.backboneOutFeature)
+        #     self.backbone.avgpool = GeM()
+        #     self.backbone.classifier = nn.Identity()
+        #
+        # elif modelKind == 'effnet-b7':
+        #     print('loading effnet-b7')
+        #     self.backbone = models.efficientnet_b7(pretrained=self.usePretrained,num_classes=self.backboneOutFeature)
+        #     self.backbone.avgpool = GeM()
+        #     self.backbone.classifier = nn.Identity()
+        #
+        # elif modelKind == 'resnext-101':
+        #     print('loading resnext 101')
+        #     self.backbone = models.resnext101_32x8d(pretrained=self.usePretrained,num_classes=self.backboneOutFeature)
+        #     self.backbone.avgpool = GeM()
+        #     self.backbone.fc = nn.Identity()
+        #
+        # elif modelKind == 'densenet-161':
+        #     print('loading densenet 161')
+        #     self.backbone = models.densenet161(pretrained=self.usePretrained,num_classes=self.backboneOutFeature)
+        #     self.backbone.classifier = nn.Identity()
+        #
+        # elif modelKind == 'densenet-201':
+        #     print('loading densenet 201')
+        #     self.backbone = models.densenet201(pretrained=self.usePretrained,num_classes=self.backboneOutFeature)
+        # elif modelKind == 'regnet':
+        #     print('loading regnet y 32gf')
+        #     self.backbone = models.regnet_x_32gf(pretrained=self.usePretrained,num_classes= self.backboneOutFeature)
+        # elif modelKind == 'effnet-v2s':
+        #     print('loading efficientnet v2 small')
+        #     self.backbone = effnetv2_s(num_classes=self.backboneOutFeature)
+        # elif modelKind == 'effnet-v2m':
+        #     print('loading efficientnet v2 middle')
+        #     self.backbone = effnetv2_m(num_classes=self.backboneOutFeature)
+        # elif modelKind == 'effnet-v2l':
+        #     print('loading efficientnet v2 large')
+        #     self.backbone = effnetv2_l(num_classes=self.backboneOutFeature)
+        # elif modelKind == 'effnet-v2xl':
+        #     print('loading efficientnet v2 extra large')
+        #     self.backbone = effnetv2_xl(num_classes=self.backboneOutFeature)
+        # elif modelKind == 'resnet-18':
+        #     print('loading resnet 18 awef')
+        #     self.backbone = models.resnet18(pretrained=self.usePretrained)
+        # elif modelKind == 'resnet-50':
+        #     print('loading resnet 50aawef')
+        #     self.backbone = models.resnet50(pretrained=True)
+        #     # self.backbone = models.resnet50(pretrained=self.usePretrained)
+        # elif modelKind == 'resnet-101':
+        #     print('loading resnet 101')
+        #     self.backbone = models.resnet101(pretrained=self.usePretrained)
+        # elif modelKind == 'resnet-152':
+        #     print('loading resnet 152')
+        #     self.backbone = models.resnet152(pretrained=self.usePretrained)
+        # else:
+        #     print(f'loading model {modelKind} from timm ....')
+        #     self.backbone = timm.create_model(model_name=modelKind,pretrained=self.usePretrained)
+
+
+        # testTensor = torch.randn((1,3,600,600))
+        # self.inFeature = self.backbone(testTensor).size(1)
+
+        # self.lin1 = nn.Linear(in_features=self.inFeature, out_features=self.LinNum)
+        # self.lin1 = nn.Linear(in_features=self.backboneOutFeature, out_features=self.LinNum)
+
+
+    def forward(self,x):
+
+        out = self.backbone(x)
+        # out = self.lin1(out)
+
+        return out

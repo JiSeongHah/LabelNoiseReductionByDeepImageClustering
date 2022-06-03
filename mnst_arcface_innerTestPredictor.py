@@ -22,7 +22,7 @@ class innerTestPredictor(nn.Module):
                  gpuUse=True,
                  iterToAccumul=2,
                  beta4f1=100):
-        super(innerPredictor, self).__init__()
+        super(innerTestPredictor, self).__init__()
 
 
         self.beta4f1 = beta4f1
@@ -37,8 +37,6 @@ class innerTestPredictor(nn.Module):
         self.bSizeVal = bSizeVal
 
         self.gpuUse = gpuUse
-        self.MaxStepTrn = MaxStepTrn
-        self.MaxStepVal = MaxStepVal
         self.iterToAccumul = iterToAccumul
 
         if self.gpuUse == True:
@@ -55,8 +53,8 @@ class innerTestPredictor(nn.Module):
                                  num_classes=2,
                                  mnst_ver=True)
 
-        self.optimizer = Adam([{'params':self.MyBackbone.parameters()},
-                              {'params':self.MyArc.parameters()}],
+        self.optimizer = Adam([{'params':self.MyBackbone.parameters()}
+                              ],
                               lr=3e-4,  # 학습률
                               eps = 1e-9
                                 # 0으로 나누는 것을 방지하기 위한 epsilon 값
@@ -231,15 +229,14 @@ class innerTestPredictor(nn.Module):
                     self.optimizer.step()
                     self.optimizer.zero_grad()
 
-                if idx == self.MaxStepTrn:
-                    break
+
 
 
                 localTimeElaps = round(time.time() - localTime,2)
                 globalTimeElaps = round(time.time() - globalTime,2)
 
 
-                TDataLoader.set_description(f'Processing : {idx}')
+                TDataLoader.set_description(f'Processing {self.ModelName}: {idx}')
                 TDataLoader.set_postfix(Gelapsed=globalTimeElaps,Lelapsed=localTimeElaps,loss=ResultLoss.item())
 
 
@@ -288,8 +285,7 @@ class innerTestPredictor(nn.Module):
                 VDataLoader.set_postfix(loss=ResultLoss)
 
 
-                if idx == self.MaxStepVal:
-                    break
+
 
 
         torch.set_grad_enabled(True)
@@ -403,7 +399,7 @@ class innerTestPredictor(nn.Module):
 
     def GETSCORE(self):
 
-        return torch.mean(self.avg_acc_lst_val_f1score[-10:])
+        return np.mean(self.avg_acc_lst_val_f1score[-10:])
 
 
 

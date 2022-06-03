@@ -12,9 +12,10 @@ def mk_noisy_data(raw_data,noise_ratio,split_ratio,way='sum'):
 
 def mk_noisy_dataTorch(raw_data,noise_ratio,split_ratio,way='sum'):
     if way == 'sum':
-        rawPart= raw_data[:split_ratio]
-        rawPartwithnoise = torch.clamp(raw_data[split_ratio:]+
-                                       (noise_ratio * torch.randint(0,255, (len(raw_data[split_ratio:]),28,28 ) ))
+        rawPartLen = int(len(raw_data)*split_ratio)
+        rawPart= raw_data[:rawPartLen]
+        rawPartwithnoise = torch.clamp(raw_data[rawPartLen:]+
+                                       (noise_ratio * torch.randint(0,255, (len(raw_data[rawPartLen:]),1,28,28 ) ))
                                        ,min=0,max=255).long()
 
         # data_with_noise = torch.cat((rawPart,rawPartwithnoise),dim=0)
@@ -26,25 +27,25 @@ def mk_noisy_dataTorch(raw_data,noise_ratio,split_ratio,way='sum'):
 
         return data_with_noise
 
-def get_noisy_data(wayofdata,split_ratio,RL_train_data_zero,RL_train_label_zero):
+def get_noisy_data(wayofdata,split_ratio,noise_ratio,RL_train_data_zero,RL_train_label_zero):
 
 
     if wayofdata == 'sum':
-        rawPart,rawPartwithNoise = mk_noisy_dataTorch(raw_data=RL_train_data_zero, noise_ratio=self.noise_ratio,
+        rawPart,rawPartwithNoise = mk_noisy_dataTorch(raw_data=RL_train_data_zero, noise_ratio=noise_ratio,
                                                        split_ratio=split_ratio, way=wayofdata)
         labelRaw,labelNoisePart =  RL_train_label_zero[:len(rawPart)],RL_train_label_zero[len(rawPart):]
 
         return rawPart,rawPartwithNoise,labelRaw,labelNoisePart
 
     elif wayofdata == 'pureonly':
-        RL_train_data_zero_little = mk_noisy_dataTorch(raw_data=RL_train_data_zero, noise_ratio=self.noise_ratio,
+        RL_train_data_zero_little = mk_noisy_dataTorch(raw_data=RL_train_data_zero, noise_ratio=noise_ratio,
                                                        split_ratio=split_ratio, way=wayofdata)
         RL_train_label_zero_little = torch.from_numpy(RL_train_label_zero[:self.split_ratio])
 
         return RL_train_data_zero_little, RL_train_label_zero_little
 
     elif wayofdata == 'noiseonly':
-        RL_train_data_zero_little = mk_noisy_dataTorch(raw_data=RL_train_data_zero, noise_ratio=self.noise_ratio,
+        RL_train_data_zero_little = mk_noisy_dataTorch(raw_data=RL_train_data_zero, noise_ratio=noise_ratio,
                                                        split_ratio=split_ratio, way=wayofdata)
         RL_train_label_zero_little = torch.from_numpy(RL_train_label_zero[:])
 
@@ -67,8 +68,10 @@ def mk_noisy_label(raw_data,raw_label,splitRatio):
 
 
 
-# x = np.ones((500,28,28))
-#
-# y =  mk_noisy_data(raw_data=x,noise_ratio=1.23,split_ratio=28,way='sum')
-#
-# print(y[29,:,:])
+x = np.ones((500,1,28,28))
+x = torch.ones((500,1,28,28))
+
+bef,aft =  mk_noisy_dataTorch(raw_data=x,noise_ratio=1.23,split_ratio=0.2,way='sum')
+
+print(bef.size())
+print(aft.size())

@@ -26,6 +26,7 @@ class OuterLoop(nn.Module):
                  plotSaveDir,
                  innermodelLoadNum,
                  dataDir,
+                 saveRange,
                  bSizeTrn,
                  bSizeVal,
                  LinNum,
@@ -42,6 +43,7 @@ class OuterLoop(nn.Module):
         self.modelSaveLoadDir = modelSaveLoadDir
         self.plotSaveDir = plotSaveDir
         self.innermodelLoadNum = innermodelLoadNum
+        self.saveRange = saveRange
 
 
         self.MyInnerPredictor = func_LoadInnerPredictor(modelSaveLoadDir = modelSaveLoadDir,
@@ -67,7 +69,8 @@ class OuterLoop(nn.Module):
                             totalTLabel,
                             totalVInput,
                             totalVLabel,
-                            iterNum
+                            iterNum,
+                            stopThreshold=1e-3
                             ):
 
         self.MyInnerPredictor.setDataLoader(trnInput = totalTInput,
@@ -76,17 +79,28 @@ class OuterLoop(nn.Module):
                                             valLabel = totalVLabel)
         
         for i in range(iterNum):
-            self.MyInnerPredictor.FIT(iterationNum=iterNum,stopThreshold = 1e-2)
-            torch.save(self.MyInnerPredictor,self.modelSaveLoadDir+str((i+1)*iterNum+self.innermodelLoadNum)+'.pth')
-            print(f'saving {(i+1)*iterNum}th inner model complete')
+            self.MyInnerPredictor.FIT(iterationNum=1)
+            if len(self.MyInnerPredictor.avg_acc_lst_val_f1score) > 12:
 
+                avg_error =cal_avg_error(x=self.MyInnerPredictor.avg_acc_lst_val_f1score[-10:],
+                                         y=self.MyInnerPredictor.avg_acc_lst_val_f1score[-11:-1])
 
+                if avg_error <stopThreshold:
+                    print(f'avg_error : {avg_error} is smaller than threshold : {stopThreshold} so break now')
+                    break
+                else:
+                    print(f'avg_error : {avg_error} is bigger than threshold : {stopThreshold} so keep iterating')
+            if i% self.saveRange == 0:
+                torch.save(self.MyInnerPredictor,self.modelSaveLoadDir+str((i+1)+self.innermodelLoadNum)+'.pth')
+                print(f'saving {(i+1)}th inner model complete')
 
 
     def getDataValue4FeatureNoise(self,data4Criterion,data2Compare):
 
-        featureCriterion,labelCriterion = self.MyInnerPredictor.getFeatures(data4Criterion)
-        featureCompare,labelCompare = self.MyInnerPredictor.getFeatures(data2Compare)
+        featureCriterion,labelCriterion = self.MyInnerPredictor.getFeatures(Inputs=data4Criterion[0],
+                                                                            Labels=data4Criterion[1])
+        featureCompare,labelCompare = self.MyInnerPredictor.getFeatures(Inputs=data2Compare[0],
+                                                                        Labels=data2Compare[1])
 
         cosineTensor = F.linear(featureCompare, featureCriterion)
         meanCosineTensor = torch.mean(cosineTensor,dim=1)
@@ -98,7 +112,7 @@ class OuterLoop(nn.Module):
     def getFilteredLowDataValueFeatureNoise(self,threshold,data4Criterion,data2Compare):
 
         DataValue = self.getDataValue4FeatureNoise(data4Criterion=data4Criterion,
-                                                   data2Compare=data2Comapre
+                                                   data2Compare=data2Compare
                                                    )
 
         DatavalueAssumedHelpful = DataValue > threshold
@@ -108,27 +122,34 @@ class OuterLoop(nn.Module):
 
         return filteredTensor,filteredLabel
 
-    def getDataValue4LabelNoise(self, data4Criterion, data2Compare,label2Check,k):
+    def getDataValue4LabelNoise(self, data4Criterion, data2Compare,label2Check,k,ver='ver2'):
 
         featureCriterion,labelCriterion = self.MyInnerPredictor.getFeatures(data4Criterion[0],data4Criterion[1])
         featureCompare,labelCompare = self.MyInnerPredictor.getFeatures(data2Compare[0],data2Compare[1])
 
         cosineTensor = F.linear(featureCompare,featureCriterion)
-        topKIndices = torch.topk(cosineTensor,dim=1,k=k).indices
 
-        inputTensor4gather = labelCriterion.repeat(topKIndices.size(0),1)
+        if ver == 'ver1':
 
-        totalLabelTensor = torch.gather(input=inputTensor4gather,dim=1,index=topKIndices) == label2Check
-        DataValue = torch.sum(totalLabelTensor.long(),dim=1) / k
+            topKIndices = torch.topk(cosineTensor,dim=1,k=k).indices
+
+            inputTensor4gather = labelCriterion.repeat(topKIndices.size(0),1)
+
+            totalLabelTensor = torch.gather(input=inputTensor4gather,dim=1,index=topKIndices) == label2Check
+            DataValue = torch.sum(totalLabelTensor.long(),dim=1) / k
+        if ver == 'ver2':
+
+            DataValue = torch.mean(cosineTensor,dim=1)
 
         return DataValue
 
-    def getFilteredLowDataValueLabelNoise(self,threshold,data2Compare,data2Criterion,label2Check,k):
+    def getFilteredLowDataValueLabelNoise(self,threshold,data2Compare,data2Criterion,label2Check,k,ver='ver2'):
 
         datavalue = self.getDataValue4LabelNoise(data4Criterion=data2Criterion,
                                                  data2Compare=data2Compare,
                                                  label2Check=label2Check,
-                                                 k=k)
+                                                 k=k,
+                                                 ver=ver)
 
         # if element is true : means that element is assumed as label2check
         filteredIndex = torch.ge(datavalue,threshold)
@@ -142,7 +163,7 @@ class OuterLoop(nn.Module):
 
         compared = torch.eq(oriLabel,predLabel).long()
 
-        accuracy = torch.sum(compared)/compared.size()
+        accuracy = torch.sum(compared)/compared.size(0)
 
         return accuracy
 
@@ -150,6 +171,7 @@ class OuterLoop(nn.Module):
                                usePretrained,
                                threshold,
                                splitRatio,
+                               noiseRatio,
                                iterNum=None):
 
         TdataRest, \
@@ -162,7 +184,8 @@ class OuterLoop(nn.Module):
         VlabelZero = func_getData(self.dataDir)
 
         datawithoutNoise, datawithNoise, labelRaw,labelNoisePart = get_noisy_data(wayofdata='sum',
-                                                                                  splitRatio=splitRatio,
+                                                                                  split_ratio=splitRatio,
+                                                                                  noise_ratio = noiseRatio,
                                                                                   RL_train_data_zero=TdataZero,
                                                                                   RL_train_label_zero=TlabelZero)
 
@@ -195,10 +218,11 @@ class OuterLoop(nn.Module):
                                             trnLabel = totalTLabel,
                                             valInput = totalVInput,
                                             valLabel = totalVLabel)
-        Predictor4baseline.FIT(iterNum = iterNum,
-                               stopThreshold= 1e-2)
+        Predictor4baseline.FIT(iterationNum = iterNum,
+                               stopThreshold= 1e-3)
 
         ACC_baseline = Predictor4baseline.GETSCORE()
+        del Predictor4baseline
         ######################### cal basline result ########################
 
 
@@ -215,10 +239,11 @@ class OuterLoop(nn.Module):
                                             trnLabel = totalTLabel,
                                             valInput = totalVInput,
                                             valLabel = totalVLabel)
-        Predictor2compare.FIT(iterNum = iterNum,
-                               stopThreshold= 1e-2)
+        Predictor2compare.FIT(iterationNum = iterNum,
+                               stopThreshold= 1e-3)
 
         ACC_compare = Predictor2compare.GETSCORE()
+        del Predictor2compare
         ######################### cal real result ########################
 
 
@@ -230,6 +255,7 @@ class OuterLoop(nn.Module):
                              threshold,
                              splitRatio,
                              k,
+                             ver='ver2',
                              iterNum=None):
         
         TdataRest,\
@@ -259,68 +285,30 @@ class OuterLoop(nn.Module):
                                      totalVLabel,
                                      iterNum)
 
-        filteredIndex = self.getFilteredLowDataValueLabelNoise(threshold=threshold,
-                                                               data2Compare=[noisedDataZero,noisedLabelZero],
-                                                               data2Criterion=[totalTInput,totalTLabel],
-                                                               label2Check=0,
-                                                               k=k
-                                                               )
-        Acc = self.comapareLabelAndPred(oriLabel=TlabelZero,predLabel=filteredIndex) - splitRatio
+        if ver == 'ver1':
+            filteredIndex = self.getFilteredLowDataValueLabelNoise(threshold=threshold,
+                                                                   data2Compare=[noisedDataZero,noisedLabelZero],
+                                                                   data2Criterion=[totalTInput,totalTLabel],
+                                                                   label2Check=0,
+                                                                   k=k,
+                                                                   ver=ver
+                                                                   )
+        if ver == 'ver2':
+            filteredIndex = self.getFilteredLowDataValueLabelNoise(threshold=threshold,
+                                                                   data2Compare=[noisedDataZero, noisedLabelZero],
+                                                                   data2Criterion=[noisedDataZero, noisedLabelZero],
+                                                                   label2Check=0,
+                                                                   k=k,
+                                                                   ver=ver
+                                                                   )
+        Acc = self.comapareLabelAndPred(oriLabel=torch.ones_like(TlabelZero)-TlabelZero,
+                                        predLabel=filteredIndex)
 
         return Acc , filteredIndex, noisedLabelZero
 
 
 
 
-
-
-innermodelLoadNum = 300
-dataDir = '/home/a286winteriscoming/DVMETRIC/'
-bSizeTrn = 128
-bSizeVal = 128
-LinNum = 512
-s = 64
-m = 0.5
-gpuUse = True
-MaxStepTrn = 1000000000000
-MaxStepVal = 10000000000000
-iterToAccumul = 2
-beta4f1 = 100
-iterNum = 100
-specificName = mk_name(dir1='/',
-                       s=s,
-                       m=m,
-                       beta4f1=beta4f1,
-                       bSizeTrn=bSizeTrn)
-
-modelSaveLoadDir = dataDir + specificName+ '/Models/'
-plotSaveDir = dataDir + specificName+ '/PLOTS/'
-
-createDirectory(modelSaveLoadDir)
-createDirectory(plotSaveDir)
-
-doit = OuterLoop(
-    modelSaveLoadDir = modelSaveLoadDir,
-    plotSaveDir=plotSaveDir,
-    innermodelLoadNum = innermodelLoadNum,
-    dataDir = dataDir,
-    bSizeTrn = bSizeTrn,
-    bSizeVal = bSizeVal,
-    LinNum = LinNum,
-    s =s,
-    m =m,
-    gpuUse = gpuUse,
-    MaxStepTrn = MaxStepTrn,
-    MaxStepVal = MaxStepVal,
-    iterToAccumul = iterToAccumul,
-    beta4f1 = beta4f1
-)
-
-doit.executeLabelNoiseVer(usePretrained=False,
-                          threshold=0.9,
-                          splitRatio= 0.8,
-                          k=7,
-                          iterNum=100)
 
 
 

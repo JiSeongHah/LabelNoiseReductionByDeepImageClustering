@@ -137,6 +137,8 @@ class innerPredictor(nn.Module):
 
 
     def forward(self, x):
+
+
         output = self.MyBackbone(x.float())
 
         return output
@@ -346,11 +348,13 @@ class innerPredictor(nn.Module):
         RECALL_val = TP_val / (TP_val + FN_val+1e-9)
         F1_score_val = ((self.beta4f1 * self.beta4f1 + 1) * PRECISION_val * RECALL_val) / (
                     self.beta4f1 * self.beta4f1 * PRECISION_val + RECALL_val+1e-9)
+        print('')
 
         print(f' TP trn is : {TP_trn}, TN trn is : {TN_trn}, FP trn is : {FP_trn}, FN trn is : {FN_trn}')
         print(f'PRECISION trn : {PRECISION_trn}, RECALL trn : {RECALL_trn}, F1 SCORE trn : {F1_score_trn}')
         print(f' TP val is : {TP_val}, TN val is : {TN_val}, FP val is : {FP_val}, FN val is : {FN_val}')
         print(f'PRECISION VAL : {PRECISION_val}, RECALL VAL : {RECALL_val}, F1 SCORE VAL : {F1_score_val}')
+        print('')
 
         self.avg_acc_lst_val_TRUE_POSITIVE.append(TP_val)
         self.avg_acc_lst_val_TRUE_NEGATIVE.append(TN_val)
@@ -394,24 +398,12 @@ class innerPredictor(nn.Module):
 
         self.flushLst()
 
-    def FIT(self,iterationNum,stopThreshold):
+    def FIT(self,iterationNum):
 
         for i in range(iterationNum):
             self.trainingStep()
             self.validatingStep()
             self.validatingStepEnd()
-
-            if len(self.avg_acc_lst_val_f1score) > 12:
-
-                avg_error =cal_avg_error(x=self.avg_acc_lst_val_f1score[-10:],y=self.avg_acc_lst_val_f1score[-11:-1])
-
-                if avg_error <stopThreshold:
-                    print(f'avg_error : {avg_error} is smaller than threshold : {stopThreshold} so break now')
-                    break
-                else:
-                    print(f'avg_error : {avg_error} is bigger than threshold : {stopThreshold} so keep iterating')
-
-
 
     def VALIDATE(self):
 
@@ -421,6 +413,7 @@ class innerPredictor(nn.Module):
 
         self.MyBackbone.eval()
         self.optimizer.zero_grad()
+        
 
         InputData = TensorDataset(Inputs,Labels)
         DATALOADER = tqdm(DataLoader(InputData,shuffle=False,batch_size=1))
@@ -434,6 +427,7 @@ class innerPredictor(nn.Module):
 
                 for idx,(bInput,bLabel) in enumerate(DATALOADER):
 
+                    bInput = bInput.float().to(self.device)
                     bFeature = self.MyBackbone(bInput)
                     bFeature = bFeature.cpu()
 
