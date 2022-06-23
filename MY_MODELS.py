@@ -534,3 +534,141 @@ class MyBYOLMODEL(nn.Module):
         # out = self.lin1(out)
 
         return out
+
+class myCluster4SPICE(nn.Module):
+    def __init__(self,
+                 inputDim,
+                 dim1,
+                 dim2,
+                 lossMethod='CE'):
+        super(myClusrer4SPICE, self).__init__()
+
+        self.inputDim = inputDim
+        self.dim1 = dim1
+        self.dim2 = dim2
+
+        self.MLP = nn.Sequential(
+            nn.Linear(in_features=self.inputDim,out_features=self.dim1),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_features=self.dim1,out_features=self.dim2)
+        )
+
+        self.lossMethod = lossMethod
+        if self.lossMethod == 'CE':
+            self.LOSS = nn.CrossEntropyLoss()
+
+    def getLoss(self,pred,label):
+
+        return self.LOSS(pred,label)
+
+    def forward(self,x):
+
+        out = self.MLP(x)
+
+        return out
+
+
+class myMultiCluster4SPICE(nn.Module):
+    def __init__(self,
+                 inputDim,
+                 dim1,
+                 dim2,
+                 numHead,
+                 lossMethod='CE'):
+        super(myClusrer4SPICE, self).__init__()
+
+        self.inputDim = inputDim
+        self.dim1 = dim1
+        self.dim2 = dim2
+        self.numHead = numHead
+        self.lossMethod = lossMethod
+
+        for h in range(self.numHead):
+            headH = myCluster4SPICE(inputDim=self.inputDim,
+                                    dim1=self.dim1,
+                                    dim2=self.dim2,
+                                    lossMethod=self.lossMethod)
+            self.__setattr__(f'eachHead_{h}',headH)
+
+
+    def forward(self,x):
+
+        totalForwardResult = []
+
+        for h in range(self.numHead):
+            eachForwardResult = self.__getattr__(f'eachHead_{h}').forward(x)
+            totalForwardResult.append(eachForwardResult)
+
+        return totalForwardResult
+
+
+    def getTotalLoss(self,x,label):
+
+        totalLoss = {}
+
+        for h in range(self.numHead):
+            eachLossH = self.__getattr__(f'eachHead_{h}').getLoss(pred=x,label=label)
+            totalLoss[f'eachHead_{h}'] = eachLossH
+
+        return totalLoss
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

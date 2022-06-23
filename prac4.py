@@ -103,43 +103,152 @@ import numpy as np
 # zz = z.repeat([1,20])
 # print(zz.size())
 # print(zz)
+# #
+# import pickle
+# import matplotlib.pyplot as plt
+# import numpy as np
+# import torch
+# import torch.nn.functional as F
 #
-import pickle
-import matplotlib.pyplot as plt
-import numpy as np
+# clusterNum = 3
+# embedSize = 5
+# bsize = 7
+# topkNum = 4
+#
+# class TEST():
+#
+#     classVar = 'juhyeon'
+#
+#     def __init__(self):
+#
+#         self.a = 1
+#
+#     # def __setattr__(self, key, value):
+#     #     print(f' {key} done with value : {value}')
+#     #     self.__dict__[key] = value
+#
+#
+#
+#
+#     def doit(self):
+#         for i in range(10):
+#             self.__setattr__(f'head_{i}',i**i)
+#
+#
+# test = TEST()
+# print(TEST.classVar)
+# test.doit()
+# print(test.__dict__)
+import torch
 
-baseDir = '/home/a286winteriscoming/'
-eachLst =['test16_500_result.pkl',
-       'test32_500_result.pkl',
-       'test64_800_result.pkl',
-       'test128_800_result.pkl',
-       'test2000_result.pkl']
+x= sum(i for i in range(10))
+print(x)
 
-embLst = [16,32,64,128,256]
-nNeighLst = [10 * (i + 1) for i in range(10)]
-neighThresholdLst = [0.91, 0.93, 0.95, 0.97, 0.99]
 
-totalBaseline = []
-totalCompareLine = []
+#
+# cosineSim = torch.randn(bsize,clusterNum)
+# print(cosineSim)
+# topkSim = torch.topk(cosineSim,dim=0,k=topkNum).indices
+#
+# print(topkSim)
+#
+# res = torch.zeros_like(cosineSim).scatter_(0,topkSim,1)
+# NULL = (res ==0)*(-1e9)
+# final = res
+#
+# test = torch.sum(res,dim=1)
+# print(final)
+# print(test)
+# print(test != 0)
+#
+# final = final[test != 0]
+# print(final)
+#
+#
 
-for each,emb in zip(eachLst,embLst):
-    with open(baseDir + each, 'rb') as f:
-        myDict = pickle.load(f)
+# target = F.softmax(final,dim=1)
+#
+# pred = torch.randn(bsize,clusterNum)
+#
+# loss = torch.nn.CrossEntropyLoss()
+#
+# print(loss(pred,target))
 
-    baselineLst = myDict['baselineAcc']
-    newAccLst = myDict['newAcc']
 
-    totalBaseline.append(np.mean(baselineLst))
-    totalCompareLine.append(np.mean(newAccLst))
 
-plt.plot(embLst,totalBaseline,'b')
-plt.plot(embLst,totalCompareLine,'r')
-plt.xlabel('embedding size')
-plt.ylabel('mean accuracy')
-plt.savefig('/home/a286winteriscoming/plotRESULT_Total.png')
-plt.close()
-plt.cla()
-plt.clf()
+# eachVecs = torch.randn(bsize,embedSize)
+# print(eachVecs)
+#
+# probs = torch.randn(bsize,clusterNum)
+# soft = torch.nn.Softmax(dim=1)
+# softProbs = soft(probs)
+# print(softProbs)
+#
+# topkConf = torch.topk(softProbs,dim=0,k=topkNum).indices
+# print(topkConf)
+#
+# lst = []
+# for eachCluster in range(clusterNum):
+#     eachTopk = topkConf[:,eachCluster]
+#     print(eachTopk)
+#     selectedTensor = torch.index_select(eachVecs,dim=0,index=eachTopk)
+#     print(selectedTensor)
+#     # print(selectedTensor.size())
+#     sumedTensor = torch.sum(selectedTensor,dim=0)
+#     print(sumedTensor.size())
+#     lst.append(sumedTensor)
+#
+#
+# lst = torch.stack(lst)
+#
+# SUM = torch.sum(lst.mul(lst),dim=1)
+# for i,each in zip(lst,SUM):
+#     ver1 = torch.div(i,torch.sqrt(each))
+#     ver2 = F.normalize(i.unsqueeze(0))
+#     print(ver1)
+#     print(ver2)
+#
+#
+#
+
+
+
+
+
+
+#
+# baseDir = '/home/a286winteriscoming/'
+# eachLst =['test16_500_result.pkl',
+#        'test32_500_result.pkl',
+#        'test64_800_result.pkl',
+#        'test128_800_result.pkl',
+#        'test2000_result.pkl']
+#
+# embLst = [16,32,64,128,256]
+# nNeighLst = [10 * (i + 1) for i in range(10)]
+# neighThresholdLst = [0.91, 0.93, 0.95, 0.97, 0.99]
+#
+# totalBaseline = []
+# totalCompareLine = []
+#
+# for each,emb in zip(eachLst,embLst):
+#     with open(baseDir + each, 'rb') as f:
+#         myDict = pickle.load(f)
+#
+#     baselineLst = myDict['baselineAcc']
+#     newAccLst = myDict['newAcc']
+#
+#     totalBaseline.append(np.mean(baselineLst))
+#     totalCompareLine.append(np.mean(newAccLst))
+#
+# plt.plot(embLst,totalBaseline,'b')
+# plt.plot(embLst,totalCompareLine,'r')
+# plt.xlabel('embedding size')
+# plt.ylabel('mean accuracy')
+# plt.savefig('/home/a286winteriscoming/plotRESULT_Total.png')
+# plt.close()
+# plt.cla()
+# plt.clf()
 
     # for idx,neighThreshold in enumerate(neighThresholdLst):
     #     baseline = baselineLst[idx::5]
