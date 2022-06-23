@@ -27,6 +27,8 @@ from save_funcs import mk_name,createDirectory
 import os
 from sklearn.neighbors import KNeighborsClassifier
 import pickle
+from SPICE_Transformation import get_train_transformations
+
 
 class doSPICE(nn.Module):
     def __init__(self,
@@ -35,11 +37,11 @@ class doSPICE(nn.Module):
                  embedSize,
                  cInputDim,
                  cDim1,
+                 configPath,
                  clusterNum,
+                 reliableCheckRatio,
                  reliableCheckNum,
                  consistencyNum,
-                 weakAug,
-                 strongAug,
                  lr=3e-4,
                  wDecay=0,
                  lossMethod = 'CE',
@@ -53,14 +55,20 @@ class doSPICE(nn.Module):
         self.embedSize = embedSize
         self.cInputDim = cInputDim
         self.cDim1 = cDim1
+        self.configPath = configPath
         self.clusterNum = clusterNum
+        self.reliableCheckRatio = reliableCheckRatio
         self.reliableCheckNum = reliableCheckNum
         self.consistencyNum = consistencyNum
         self.trnBSize = trnBSize
         self.lossMethod = lossMethod
 
-        self.weakAug = weakAug
-        self.strongAug =strongAug
+        dataCfg =Config.fromfile(self.configPath)
+        cfgWeak = dataCfg.dataConfigs.trans1
+        cfgStrong = dataCfg.dataConfigs.trans2
+
+        self.weakAug = get_train_transformations(cfgWeak)
+        self.strongAug = get_train_transformations(cfgStrong)
 
         self.lr = lr
         self.wDecay = wDecay
@@ -168,8 +176,6 @@ class doSPICE(nn.Module):
 
         for idx, (inputs, label) in enumerate(TDataLoader):
 
-
-
             ######################################### E STEP ############################################
             ######################################### E STEP ############################################
             ######################################### E STEP ############################################
@@ -270,8 +276,6 @@ class doSPICE(nn.Module):
                 lossMean.backward()
                 self.optimizerCHead.step()
 
-
-
                 localTimeElaps = round(time.time() - localTime, 2)
                 globalTimeElaps = round(time.time() - globalTime, 2)
 
@@ -283,15 +287,128 @@ class doSPICE(nn.Module):
         self.ClusterHead.eval()
 
     def trainJointly(self):
-        pass
-        # self.FeatureExtractorBYOL.eval()
-        # self.ClusterHead.eval()
-        #
-        # TDataLoader = tqdm(self.trainDataloader)
-        # for idx, (inputs,labels) in enumerate(TDat  aLoader):
-        #     print(faows)
-        #
-        #
+
+        self.ClusterHead.eval()
+
+        totalReliableInput = []
+        totalLabelForReliableInput = []
+        totalUnReliableInput = []
+
+        with torch.set_grad_enabled(False):
+
+            TDataLoader = tqdm(self.trainDataloader)
+            globalTime = time.time()
+
+            for idx, (inputs, label) in enumerate(TDataLoader):
+
+                ######################################### E STEP ############################################
+                ######################################### E STEP ############################################
+                ######################################### E STEP ############################################
+
+                self.ClusterHead.eval()
+
+                # M/K will be selected for topk
+                topkNum = int(inputs.size(0) / self.clusterNum)
+                localTime = time.time()
+
+                weakAugedInput = self.weakAug(inputs.clone().detach())
+                weakAugedInput = weakAugedInput.to(self.device)
+                inputs = inputs.to(self.device)
+
+                with torch.set_grad_enabled(False):
+                    # FB means from First Branch
+                    # First branch change input to embedding vector
+                    # eachFeatVecsFB  : (batch size , embeding size)
+                    eachFeatVecsFB = self.FeatureExtractorBYOL(inputs)
+                    eachFeatVecsFB = eachFeatVecs.cpu().clone().detach()
+
+                    # SB means from Second Branch
+                    # Second Branch change weakly augmented input to embedding vector
+                    # eachFeatVecsSB  : (batch size , embedSize)
+                    eachFeatVecsSB = self.FeatureExtractorBYOL(weakAugedInput)
+                    eachFeatVecsSB = eachFeatVecSB.cpu().clone().detach()
+
+                    # eachProbs : (bach_size, cluster num)
+                    # probs calculated by embedding vector from second branch
+                    eachProbsSB = self.forwardClusterHead(eachFeatVecsSB)
+
+                # topkConfidence : (topk num , cluster num)
+                topkConfidence = torch.topk(eachProbsSB, dim=0, k=topkNum).indices
+
+                pseudoCentroid = []
+                for eachCluster in range(self.clusterNum):
+                    eachTopK = topkConfidence[:, eachCluster]
+                    # eachSelectedTensor : totalBatch[idx == topk] for each cluster
+                    eachSelectedTensor = torch.index_select(input=eachFeatVecsFB,
+                                                            dim=0,
+                                                            index=eachTopK)
+                    # sumedTensor : SUM( each selected topk tensor) * K/M
+                    # sumedTensor : ( embedSize)
+                    sumedTensor = torch.sum(eachSelectedTensor, dim=0) * (self.clusterNum / inputs.size(0))
+                    pseudoCentroid.append(sumedTensor)
+
+                pseudoCentroid = torch.stack(pseudoCentroid)
+                # pseudoCentroid : (clusterNum , embedSize)
+
+                # To calculate cosSim between embedding vector from first branch
+                # and Pseudo Centroid
+                # normalizedCentroid : (clusterNum, embedSize)
+                normalizedCentroid = F.normalize(pseudoCentroid)
+                # normalizedFestFB : (batchSize, embedSize)
+                normalizedFeatsFB = F.normalize(eachFeatVecsFB)
+
+                # cosineSim : (batch size , clusterNum)
+                cosineSim = F.linear(normalizedFeatsFB, normalizedCentroid)
+                topkSim = torch.topk(cosineSim, dim=0, k=topkNum).indices
+
+                # batchPseudoLabel is 2d tensor which element is 1 or 0
+                # if data of certain row is topk simliar to certain cluster of certain column
+                # then that element is 1. else element is 0
+                # batchPseudoLabel : (batch size , cluterNum)
+                batchPseudoLabel = torch.zeros_like(cosineSim).scatter(0, topkSim, 1)
+
+                # Filter data row which is not belong to any of clusters
+                # that data is not trained by algorithm
+                check4notTrain = torch.sum(batchPseudoLabel, dim=1)
+                batchPseudoLabel = batchPseudoLabel[check4notTrain != 0]
+                batchNullPart = (batchPseudoLabel == 0) * (-1e9)
+
+                # finalPseudoLabel : (batch size - filtered num, clutser Num)
+                finalPseudoLabel = F.softmax(batchPseudoLabel + batchNullPart, dim=1)
+                ReliableInput = inputs.cpu().clone().detach()[check4notTrain != 0]
+                UnReliableInput = inputs.cpu().clone().detach()[check4notTrain == 0]
+
+                totalReliableInput.append(ReliableInput)
+                totalLabelForReliableInput.append(finalPseudoLabel)
+                totalUnReliableInput.append(UnReliableInput)
+
+                ######################################### E STEP ############################################
+                ######################################### E STEP ############################################
+                ######################################### E STEP ############################################
+
+        totalReliableInput = torch.cat(totalReliableInput)
+        totalLabelForReliableInput = torch.cat(totalLabelForReliableInput)
+        totalUnReliableInput = torch.cat(totalUnReliableInput)
+
+        cosSim4RelInput = F.linear(F.normalize(totalUnReliableInput),F.normalize(totalUnReliableInput))
+        topKNeighbors = torch.topk(cosSim4RelInput,dim=1,k=self.reliableCheckNum+1).indices
+
+        # filter data itself
+        for i in range(len(topKNeighbors)):
+            topKNeighbors[i,i] = 0
+
+        for eachRow in topKNeibors:
+            labelOfNeighbors = torch.index_select(totalLabelForReliableInput,0,eachRow)
+
+
+
+
+
+
+
+
+
+
 
     def testFunc(self):
 

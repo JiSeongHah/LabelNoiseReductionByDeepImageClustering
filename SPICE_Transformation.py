@@ -147,42 +147,42 @@ def get_train_transformations(cfg):
 
 
 
-# from SPICE_CONFIG import Config
-#
-#
-# from importlib import import_module
-# import torch
-# from torchvision import datasets
-# from PIL import Image
-# import matplotlib.pyplot as plt
-# import random
-#
-# dataset = datasets.CIFAR10(root='/home/emeraldsword1423/',train=True,download=True)
-#
-# cfg1 =Config.fromfile('./prac4.py')
-# trans1 = cfg1.data_train.trans1
-#
-# for x in range(10):
-#     i = random.randrange(0,50000-1)
-#
-#     img = dataset[i][0]
-#
-#     plt.imshow(img)
-#     plt.show()
-#     plt.close()
-#     print(trans1)
-#
-#
-#     # x = torch.randn(5,3,32,32)
-#
-#     y = get_train_transformations(trans1)
-#
-#
-#     TRNS = torchvision.transforms.ToPILImage()
-#
-#     img2 = TRNS(y(img))
-#
-#     plt.imshow(img2)
-#     plt.show()
-#     # z = y(x)
-#     # print(z.size())
+from SPICE_CONFIG import Config
+
+
+from importlib import import_module
+import torch
+from torchvision import datasets
+from PIL import Image
+import matplotlib.pyplot as plt
+import random
+
+dataset = datasets.CIFAR10(root='/home/emeraldsword1423/',train=True,download=True)
+
+cfg1 =Config.fromfile('./prac4.py')
+trans1 = cfg1.data_train.trans1
+
+for x in range(10):
+    i = random.randrange(0,50000-1)
+
+    img = dataset[i][0]
+
+    plt.imshow(img)
+    plt.show()
+    plt.close()
+    print(trans1)
+
+
+    # x = torch.randn(5,3,32,32)
+
+    y = get_train_transformations(trans1)
+
+
+    TRNS = torchvision.transforms.ToPILImage()
+
+    img2 = TRNS(y(img))
+
+    plt.imshow(img2)
+    plt.show()
+    # z = y(x)
+    # print(z.size())
