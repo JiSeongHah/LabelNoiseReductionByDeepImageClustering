@@ -28,7 +28,7 @@ import os
 from sklearn.neighbors import KNeighborsClassifier
 import pickle
 from SPICE_Transformation import get_train_transformations
-
+from torch.utils.data import TensorDataset
 
 class doSPICE(nn.Module):
     def __init__(self,
@@ -42,10 +42,12 @@ class doSPICE(nn.Module):
                  reliableCheckRatio,
                  reliableCheckNum,
                  consistencyNum,
+                 consistencyRatio,
                  lr=3e-4,
                  wDecay=0,
                  lossMethod = 'CE',
                  trnBSize=32,
+                 jointTrnBSize=1000,
                  gpuUse=True):
         super(doSPICE, self).__init__()
 
@@ -60,7 +62,9 @@ class doSPICE(nn.Module):
         self.reliableCheckRatio = reliableCheckRatio
         self.reliableCheckNum = reliableCheckNum
         self.consistencyNum = consistencyNum
+        self.consistencyRatio = consistencyRatio
         self.trnBSize = trnBSize
+        self.jointTrnBSize = jointTrnBSize
         self.lossMethod = lossMethod
 
         dataCfg =Config.fromfile(self.configPath)
@@ -124,6 +128,17 @@ class doSPICE(nn.Module):
         predProb = nn.Softmax(predBefSoftmax,dim=1)
 
         return predProb.cpu().clone().detach()
+
+    def calLoss(self,logits,labels):
+        if self.lossMethod == 'CE':
+            LOSS = nn.CrossEntropyLoss()
+
+            preds = torch.argmax(logits,dim=1)
+
+            acc = torch.mean((preds == labels).float())
+
+            return acc, LOSS(logits,labels)
+
 
 
     def convert2FeatVec(self):
@@ -386,19 +401,118 @@ class doSPICE(nn.Module):
                 ######################################### E STEP ############################################
                 ######################################### E STEP ############################################
 
+        # totalReliableInput : ( filtered data size , embedding size)
         totalReliableInput = torch.cat(totalReliableInput)
+        # totalLabelForReliableInput : ( data size, 1)
         totalLabelForReliableInput = torch.cat(totalLabelForReliableInput)
+        # totalUnReliableInput : ( total data size - filtered data size , embedding size)
         totalUnReliableInput = torch.cat(totalUnReliableInput)
+        # cosSim4RelInput : ( filtered data size, filtered data size)
+        cosSim4RelInput = F.linear(F.normalize(totalReliableInput),F.normalize(totalReliableInput))
+        # topKNeighbors : (filtered data size, topkNum+1), start from 1 to filter data itself
+        topKNeighbors = torch.topk(cosSim4RelInput,dim=1,k=self.reliableCheckNum+1).indices[:,1:]
 
-        cosSim4RelInput = F.linear(F.normalize(totalUnReliableInput),F.normalize(totalUnReliableInput))
-        topKNeighbors = torch.topk(cosSim4RelInput,dim=1,k=self.reliableCheckNum+1).indices
 
-        # filter data itself
-        for i in range(len(topKNeighbors)):
-            topKNeighbors[i,i] = 0
+        finalReliableInput = []
+        finalReliableLabel =[]
 
-        for eachRow in topKNeibors:
-            labelOfNeighbors = torch.index_select(totalLabelForReliableInput,0,eachRow)
+        finalSubReliableInput = []
+        finalSubReliableLabel = []
+
+        for eachInput, eachRow,eachLabel in zip(totalReliableInput,topKNeighbors,totalLabelForReliableInput):
+            # check how many neighbors have same label
+            labelOfNeighbors = torch.index_select(totalLabelForReliableInput,0,eachRow) == eachLabel
+            labelOfNeighbors = torch.mean(labelOfNeighbors.float()) > self.reliableCheckRatio
+
+            if labelOfNeighbors == True:
+                finalReliableInput.append(eachInput)
+                finalReliableLabel.append(eachLabel)
+            else:
+                probOfWeakAug = self.ClusterHead(self.weakAug(eachInput))
+                if torch.max(probOfWeakAug) > self.consistencyRatio:
+                    finalSubReliableInput.append(eachInput)
+                    finalSubReliableLabel.append(torch.argmax(probOfWeakAug,dim=1))
+                else:
+                    pass
+
+        for eachInput in totalUnReliableInput:
+            probOfWeakAug = self.ClusterHead(self.weakAug(eachInput))
+            if torch.max(probOfWeakAug)> self.consistencyRatio:
+                finalSubReliableInput.append(eachInput)
+                finalSubReliableLabel.append(torch.argmax(probOfWeakAug,dim=1))
+            else:
+                pass
+
+
+        finalReliableInput = torch.cat(finalReliableInput)
+        finalReliableLabel = torch.cat(finalSubReliableLabel)
+        ReliableInputIdx = torch.ones(len(finalReliableInput))
+
+        finalSubReliableInput = torch.cat(finalSubReliableInput)
+        finalSubReliableLabel = torch.cat(finalSubReliableLabel)
+        SubReliableInputIdx = torch.zeros(len(finalSubReliableInput))
+
+        finalTotalTrnInput = torch.cat([finalReliableInput,finalSubReliableInput])
+        finalTotalTrnLabel = torch.cat([finalReliableLabel,finalSubReliableLabel])
+        finatlIdx = torch.cat([ReliableInputIdx,SubReliableInputIdx])
+
+        theDataset = TensorDataset(finalTotalTrnInput,finalTotalTrnLabel,finatlIdx)
+        theDataloader = DataLoader(theDataset,batch_size=self.jointTrnBSize,shuffle=True)
+
+        self.FeatureExtractorBYOL.train()
+        self.ClusterHead.train()
+        with torch.set_grad_enabled(True):
+            for theInputs,theLabels,theIdxes in theDataloader:
+
+                reliableIdx = idxes == 1
+                unReliableIdx = idxes == 0
+
+                if torch.sum(reliableIdx.float()) != 0 and torch.sum(unReliableIdx.float()) != 0:
+
+                    reliableInput = self.weakAug(theInputs[reliableIdx])
+                    reliableLabel = theLabels[reliableIdx]
+
+                    unReliableInput = self.strongAug(theInputs[unReliableIdx])
+                    unReliableLabel = theLabels[unReliableIdx]
+
+                    realiableLogits = self.forwardClusterHead(self.FeatureExtractorBYOL(reliableInput))
+                    realiableLoss = self.calLoss(realiableLogits,reliableLabel)
+
+                    unReliableLogits = self.forwardClusterHead(self.FeatureExtractorBYOL(unReliableInput))
+                    unReliableLoss = self.calLoss(unReliableLogits,unReliableLabel)
+
+                    totalLoss = realiableLoss+unReliableLoss
+                    self.optimizerBackbone.zero_grad()
+                    self.optimizerCHead.zero_grad()
+                    totalLoss.backward()
+                    self.optimizerBackbone.step()
+                    self.optimizerCHead.step()
+
+
+        self.FeatureExtractorBYOL.eval()
+        self.ClusterHead.eval()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
