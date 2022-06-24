@@ -541,7 +541,7 @@ class myCluster4SPICE(nn.Module):
                  dim1,
                  dim2,
                  lossMethod='CE'):
-        super(myClusrer4SPICE, self).__init__()
+        super(myCluster4SPICE, self).__init__()
 
         self.inputDim = inputDim
         self.dim1 = dim1
@@ -575,7 +575,7 @@ class myMultiCluster4SPICE(nn.Module):
                  dim2,
                  numHead,
                  lossMethod='CE'):
-        super(myClusrer4SPICE, self).__init__()
+        super(myMultiCluster4SPICE, self).__init__()
 
         self.inputDim = inputDim
         self.dim1 = dim1
@@ -611,6 +611,7 @@ class myMultiCluster4SPICE(nn.Module):
             totalLoss[f'eachHead_{h}'] = eachLossH
 
         return totalLoss
+
 
 
 

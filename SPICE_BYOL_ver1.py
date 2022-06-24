@@ -6,8 +6,8 @@ import torchvision.transforms as transforms
 from torchvision.datasets import CIFAR10
 from torch.utils.data import DataLoader
 from torchvision import models
-from torch.optim import AdamW,Adam,SGD
-from MY_MODELS import ResNet,BasicBlock,BottleNeck
+from torch.optim import AdamW, Adam, SGD
+from MY_MODELS import ResNet, BasicBlock, BottleNeck
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,7 +15,7 @@ import numpy as np
 import math
 from byol_pytorch import BYOL
 from torchvision import models
-from MY_MODELS import ResNet,BasicBlock,BottleNeck,myCluster4SPICE,
+from MY_MODELS import ResNet, BasicBlock, BottleNeck, myCluster4SPICE,
 from torchvision.datasets import CIFAR10
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
@@ -23,12 +23,13 @@ import matplotlib.pyplot as plt
 from torchvision import models
 from tqdm import tqdm
 import time
-from save_funcs import mk_name,createDirectory
+from save_funcs import mk_name, createDirectory
 import os
 from sklearn.neighbors import KNeighborsClassifier
 import pickle
 from SPICE_Transformation import get_train_transformations
 from torch.utils.data import TensorDataset
+
 
 class doSPICE(nn.Module):
     def __init__(self,
@@ -43,9 +44,8 @@ class doSPICE(nn.Module):
                  consistencyRatio=0.95,
                  lr=3e-4,
                  wDecay=0,
-                 lossMethod = 'CE',
+                 lossMethod='CE',
                  trnBSize=50000,
-                 valBSize=128,
                  jointTrnBSize=1000,
                  gpuUse=True):
         super(doSPICE, self).__init__()
@@ -62,11 +62,10 @@ class doSPICE(nn.Module):
         self.reliableCheckNum = reliableCheckNum
         self.consistencyRatio = consistencyRatio
         self.trnBSize = trnBSize
-        self.valBSize = valBSize
         self.jointTrnBSize = jointTrnBSize
         self.lossMethod = lossMethod
 
-        dataCfg =Config.fromfile(self.configPath)
+        dataCfg = Config.fromfile(self.configPath)
         cfgWeak = dataCfg.dataConfigs.trans1
         cfgStrong = dataCfg.dataConfigs.trans2
 
@@ -85,29 +84,23 @@ class doSPICE(nn.Module):
             self.device = torch.device('cpu')
             print('학습을 진행하는 기기:', self.device)
 
-
         self.FeatureExtractorBYOL = ResNet(block=BottleNeck,
-                                    num_blocks=[3,4,6,3],
-                                    num_classes=self.embedSize,
-                                    mnst_ver=False)
+                                           num_blocks=[3, 4, 6, 3],
+                                           num_classes=self.embedSize,
+                                           mnst_ver=False)
         print(f'loading {modelLoadDir} {modelLoadNum}')
-        modelStateDict = torch.load(self.modelLoadDir+self.modelLoadNum+'.pt')
+        modelStateDict = torch.load(self.modelLoadDir + self.modelLoadNum + '.pt')
         self.FeatureExtractorBYOL.load_state_dict(modelStateDict)
         print(f'loading {modelLoadDir} {modelLoadNum} successfully')
 
         self.ClusterHead = myCluster4SPICE(inputDim=self.embedSize,
-                                            dim1=cDim1,
-                                            dim2=cDim1)
+                                           dim1=cDim1,
+                                           dim2=cDim1)
 
         transform = transforms.Compose([transforms.ToTensor()])
         self.dataset = CIFAR10(root='~/', train=True, download=True, transform=transform)
         self.trainDataloader = DataLoader(self.dataset,
                                           batch_size=self.trnBSize,
-                                          shuffle=True,
-                                          num_workers=2)
-
-        self.valDataloader = DataLoader(self.dataset,
-                                          batch_size=self.valBSize,
                                           shuffle=False,
                                           num_workers=2)
 
@@ -117,42 +110,36 @@ class doSPICE(nn.Module):
                                       weight_decay=self.wDecay)
 
         self.optimizerCHead = Adam(self.ClusterHead.parameters(),
-                                      lr=self.lr,
-                                      eps=1e-9,
-                                      weight_decay=self.wDecay)
-
-        self.clusterOnlyLossLst = []
-
+                                   lr=self.lr,
+                                   eps=1e-9,
+                                   weight_decay=self.wDecay)
 
         self.FeatureExtractorBYOL.to(self.device)
         self.ClusterHead.to(self.device)
 
-    def forwardClusterHead(self,x):
+    def forwardClusterHead(self, x):
 
         predBefSoftmax = self.ClusterHead(x)
 
-        predProb = nn.Softmax(predBefSoftmax,dim=1)
+        predProb = nn.Softmax(predBefSoftmax, dim=1)
 
         return predProb.cpu().clone().detach()
 
-    def calLoss(self,logits,labels):
+    def calLoss(self, logits, labels):
         if self.lossMethod == 'CE':
             LOSS = nn.CrossEntropyLoss()
 
-            preds = torch.argmax(logits,dim=1)
+            preds = torch.argmax(logits, dim=1)
 
             acc = torch.mean((preds == labels).float())
 
-            return acc, LOSS(logits,labels)
-
-
+            return acc, LOSS(logits, labels)
 
     def convert2FeatVec(self):
 
         self.FeatureExtractorBYOL.eval()
 
         with torch.set_grad_enabled(False):
-
             TDataLoader = tqdm(self.trainDataloader)
 
             globalTime = time.time()
@@ -187,8 +174,7 @@ class doSPICE(nn.Module):
 
         return totalFeatVecTensor, totalLabelTensor
 
-
-    def trainHeadOnly(self):
+    def trainClusterLayer(self):
 
         self.FeatureExtractorBYOL.eval()
 
@@ -204,13 +190,12 @@ class doSPICE(nn.Module):
             self.ClusterHead.eval()
 
             # M/K will be selected for topk
-            topkNum = int(inputs.size(0)/self.clusterNum)
+            topkNum = int(inputs.size(0) / self.clusterNum)
             localTime = time.time()
 
             weakAugedInput = self.weakAug(inputs.clone().detach())
             weakAugedInput = weakAugedInput.to(self.device)
             inputs = inputs.to(self.device)
-
 
             with torch.set_grad_enabled(False):
                 # FB means from First Branch
@@ -225,23 +210,23 @@ class doSPICE(nn.Module):
                 eachFeatVecsSB = self.FeatureExtractorBYOL(weakAugedInput)
                 eachFeatVecsSB = eachFeatVecSB.cpu().clone().detach()
 
-                #eachProbs : (bach_size, cluster num)
+                # eachProbs : (bach_size, cluster num)
                 # probs calculated by embedding vector from second branch
                 eachProbsSB = self.forwardClusterHead(eachFeatVecsSB)
 
-            #topkConfidence : (topk num , cluster num)
-            topkConfidence = torch.topk(eachProbsSB,dim=0,k=topkNum).indices
+            # topkConfidence : (topk num , cluster num)
+            topkConfidence = torch.topk(eachProbsSB, dim=0, k=topkNum).indices
 
             pseudoCentroid = []
             for eachCluster in range(self.clusterNum):
-                eachTopK = topkConfidence[:,eachCluster]
+                eachTopK = topkConfidence[:, eachCluster]
                 # eachSelectedTensor : totalBatch[idx == topk] for each cluster
                 eachSelectedTensor = torch.index_select(input=eachFeatVecsFB,
                                                         dim=0,
                                                         index=eachTopK)
                 # sumedTensor : SUM( each selected topk tensor) * K/M
                 # sumedTensor : ( embedSize)
-                sumedTensor = torch.sum(eachSelectedTensor,dim=0) * (self.clusterNum / inputs.size(0))
+                sumedTensor = torch.sum(eachSelectedTensor, dim=0) * (self.clusterNum / inputs.size(0))
                 pseudoCentroid.append(sumedTensor)
 
             pseudoCentroid = torch.stack(pseudoCentroid)
@@ -255,25 +240,24 @@ class doSPICE(nn.Module):
             normalizedFeatsFB = F.normalize(eachFeatVecsFB)
 
             # cosineSim : (batch size , clusterNum)
-            cosineSim = F.linear(normalizedFeatsFB,normalizedCentroid)
-            topkSim = torch.topk(cosineSim,dim=0,k=topkNum).indices
+            cosineSim = F.linear(normalizedFeatsFB, normalizedCentroid)
+            topkSim = torch.topk(cosineSim, dim=0, k=topkNum).indices
 
             # batchPseudoLabel is 2d tensor which element is 1 or 0
             # if data of certain row is topk simliar to certain cluster of certain column
             # then that element is 1. else element is 0
             # batchPseudoLabel : (batch size , cluterNum)
-            batchPseudoLabel = torch.zeros_like(cosineSim).scatter(0,topkSim,1)
+            batchPseudoLabel = torch.zeros_like(cosineSim).scatter(0, topkSim, 1)
 
             # Filter data row which is not belong to any of clusters
             # that data is not trained by algorithm
-            check4notTrain = torch.sum(batchPseudoLabel,dim=1)
+            check4notTrain = torch.sum(batchPseudoLabel, dim=1)
             batchPseudoLabel = batchPseudoLabel[check4notTrain != 0]
-            batchNullPart = (batchPseudoLabel == 0)*(-1e9)
+            batchNullPart = (batchPseudoLabel == 0) * (-1e9)
 
             # finalPseudoLabel : (batch size - filtered num, clutser Num)
-            finalPseudoLabel = F.softmax(batchPseudoLabel+batchNullPart,dim=1)
+            finalPseudoLabel = F.softmax(batchPseudoLabel + batchNullPart, dim=1)
             filteredInput = inputs.cpu().clone().detach()[check4notTrain != 0]
-
 
             ######################################### E STEP ############################################
             ######################################### E STEP ############################################
@@ -290,14 +274,12 @@ class doSPICE(nn.Module):
                 predProbs = self.ClusterHead(strongAugedFeats)
                 predProbs = predProbs.cpu()
 
-                lossResult = self.ClusterHead.getLoss(x=predProbs,label=finalPseudoLabel)
-                # lossMean = sum(loss for loss in lossDicts.values())/self.numHead
+                lossDicts = self.ClusterHead.getTotalLoss(x=predProbs, label=finalPseudoLabel)
+                lossMean = sum(loss for loss in lossDicts.values()) / self.numHead
 
                 self.optimizerCHead.zero_grad()
-                lossResult.backward()
+                lossMean.backward()
                 self.optimizerCHead.step()
-
-                self.clusterOnlyLossLst.append(lossResult.item())
 
                 localTimeElaps = round(time.time() - localTime, 2)
                 globalTimeElaps = round(time.time() - globalTime, 2)
@@ -308,45 +290,6 @@ class doSPICE(nn.Module):
                                         )
 
         self.ClusterHead.eval()
-
-    def validationHeadOnly(self):
-
-        self.FeatureExtractorBYOL.eval()
-        self.ClusterHead.eval()
-
-        TDataLoader = tqdm(self.trainDataloader)
-
-        clusterPredResult = []
-        nowLabelResult = []
-
-        for idx, (inputs, label) in enumerate(TDataLoader):
-
-            embededInput = self.FeatureExtractorBYOL(inputs)
-
-            clusterProb = self.forwardClusterHead(embededInput)
-            clusterPred = torch.argmax(clusterProb,dim=1)
-            clusterPredResult.append(clusterPred)
-            nowLabelResult.append(label)
-
-        clusterPredResult =torch.cat(clusterPredResult)
-        nowLabelResult = torch.cat(nowLabelResult)
-
-        for eachCluster in range(len(self.clusterNum)):
-            sameClusterIdx = clusterPredResult == eachCluster
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     def trainJointly(self):
 
@@ -455,20 +398,19 @@ class doSPICE(nn.Module):
         # totalUnReliableInput : ( total data size - filtered data size , embedding size)
         totalUnReliableInput = torch.cat(totalUnReliableInput)
         # cosSim4RelInput : ( filtered data size, filtered data size)
-        cosSim4RelInput = F.linear(F.normalize(totalReliableInput),F.normalize(totalReliableInput))
+        cosSim4RelInput = F.linear(F.normalize(totalReliableInput), F.normalize(totalReliableInput))
         # topKNeighbors : (filtered data size, topkNum+1), start from 1 to filter data itself
-        topKNeighbors = torch.topk(cosSim4RelInput,dim=1,k=self.reliableCheckNum+1).indices[:,1:]
-
+        topKNeighbors = torch.topk(cosSim4RelInput, dim=1, k=self.reliableCheckNum + 1).indices[:, 1:]
 
         finalReliableInput = []
-        finalReliableLabel =[]
+        finalReliableLabel = []
 
         finalSubReliableInput = []
         finalSubReliableLabel = []
 
-        for eachInput, eachRow,eachLabel in zip(totalReliableInput,topKNeighbors,totalLabelForReliableInput):
+        for eachInput, eachRow, eachLabel in zip(totalReliableInput, topKNeighbors, totalLabelForReliableInput):
             # check how many neighbors have same label
-            labelOfNeighbors = torch.index_select(totalLabelForReliableInput,0,eachRow) == eachLabel
+            labelOfNeighbors = torch.index_select(totalLabelForReliableInput, 0, eachRow) == eachLabel
             labelOfNeighbors = torch.mean(labelOfNeighbors.float()) > self.reliableCheckRatio
 
             if labelOfNeighbors == True:
@@ -478,18 +420,17 @@ class doSPICE(nn.Module):
                 probOfWeakAug = self.ClusterHead(self.weakAug(eachInput))
                 if torch.max(probOfWeakAug) > self.consistencyRatio:
                     finalSubReliableInput.append(eachInput)
-                    finalSubReliableLabel.append(torch.argmax(probOfWeakAug,dim=1))
+                    finalSubReliableLabel.append(torch.argmax(probOfWeakAug, dim=1))
                 else:
                     pass
 
         for eachInput in totalUnReliableInput:
             probOfWeakAug = self.ClusterHead(self.weakAug(eachInput))
-            if torch.max(probOfWeakAug)> self.consistencyRatio:
+            if torch.max(probOfWeakAug) > self.consistencyRatio:
                 finalSubReliableInput.append(eachInput)
-                finalSubReliableLabel.append(torch.argmax(probOfWeakAug,dim=1))
+                finalSubReliableLabel.append(torch.argmax(probOfWeakAug, dim=1))
             else:
                 pass
-
 
         finalReliableInput = torch.cat(finalReliableInput)
         finalReliableLabel = torch.cat(finalSubReliableLabel)
@@ -499,23 +440,22 @@ class doSPICE(nn.Module):
         finalSubReliableLabel = torch.cat(finalSubReliableLabel)
         SubReliableInputIdx = torch.zeros(len(finalSubReliableInput))
 
-        finalTotalTrnInput = torch.cat([finalReliableInput,finalSubReliableInput])
-        finalTotalTrnLabel = torch.cat([finalReliableLabel,finalSubReliableLabel])
-        finatlIdx = torch.cat([ReliableInputIdx,SubReliableInputIdx])
+        finalTotalTrnInput = torch.cat([finalReliableInput, finalSubReliableInput])
+        finalTotalTrnLabel = torch.cat([finalReliableLabel, finalSubReliableLabel])
+        finatlIdx = torch.cat([ReliableInputIdx, SubReliableInputIdx])
 
-        theDataset = TensorDataset(finalTotalTrnInput,finalTotalTrnLabel,finatlIdx)
-        theDataloader = DataLoader(theDataset,batch_size=self.jointTrnBSize,shuffle=True)
+        theDataset = TensorDataset(finalTotalTrnInput, finalTotalTrnLabel, finatlIdx)
+        theDataloader = DataLoader(theDataset, batch_size=self.jointTrnBSize, shuffle=True)
 
         self.FeatureExtractorBYOL.train()
         self.ClusterHead.train()
         with torch.set_grad_enabled(True):
-            for theInputs,theLabels,theIdxes in theDataloader:
+            for theInputs, theLabels, theIdxes in theDataloader:
 
                 reliableIdx = idxes == 1
                 unReliableIdx = idxes == 0
 
                 if torch.sum(reliableIdx.float()) != 0 and torch.sum(unReliableIdx.float()) != 0:
-
                     reliableInput = self.weakAug(theInputs[reliableIdx])
                     reliableLabel = theLabels[reliableIdx]
 
@@ -523,18 +463,17 @@ class doSPICE(nn.Module):
                     unReliableLabel = theLabels[unReliableIdx]
 
                     realiableLogits = self.forwardClusterHead(self.FeatureExtractorBYOL(reliableInput))
-                    realiableLoss = self.calLoss(realiableLogits,reliableLabel)
+                    realiableLoss = self.calLoss(realiableLogits, reliableLabel)
 
                     unReliableLogits = self.forwardClusterHead(self.FeatureExtractorBYOL(unReliableInput))
-                    unReliableLoss = self.calLoss(unReliableLogits,unReliableLabel)
+                    unReliableLoss = self.calLoss(unReliableLogits, unReliableLabel)
 
-                    totalLoss = realiableLoss+unReliableLoss
+                    totalLoss = realiableLoss + unReliableLoss
                     self.optimizerBackbone.zero_grad()
                     self.optimizerCHead.zero_grad()
                     totalLoss.backward()
                     self.optimizerBackbone.step()
                     self.optimizerCHead.step()
-
 
         self.FeatureExtractorBYOL.eval()
         self.ClusterHead.eval()
@@ -545,7 +484,6 @@ modelLoadNum = 'test2000.pt'
 embedSize = 256
 configPath = '/home/a286winteriscoming/PycharmProjects/DATA_VALUATION_REINFORCE/SPICE_Config_cifar10.py'
 clusterNum = 10
-
 
 do = doSPICE(modelLoadDir=modelLoadDir,
              modelLoadNum=modelLoadNum,
@@ -615,5 +553,4 @@ do = doSPICE(modelLoadDir=modelLoadDir,
 
 
 
-        
-        
+
