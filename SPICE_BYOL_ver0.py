@@ -37,6 +37,7 @@ class doSPICE(nn.Module):
                  embedSize,
                  configPath,
                  clusterNum,
+                 labelNoiseRatio=0.2,
                  cDim1=512,
                  reliableCheckNum=100,
                  reliableCheckRatio=0.95,
@@ -58,6 +59,7 @@ class doSPICE(nn.Module):
         self.cDim1 = cDim1
         self.configPath = configPath
         self.clusterNum = clusterNum
+        self.labelNoiseRatio = labelNoiseRatio
         self.reliableCheckRatio = reliableCheckRatio
         self.reliableCheckNum = reliableCheckNum
         self.consistencyRatio = consistencyRatio
@@ -317,7 +319,7 @@ class doSPICE(nn.Module):
         TDataLoader = tqdm(self.trainDataloader)
 
         clusterPredResult = []
-        nowLabelResult = []
+        gtLabelResult = []
 
         for idx, (inputs, label) in enumerate(TDataLoader):
 
@@ -326,13 +328,29 @@ class doSPICE(nn.Module):
             clusterProb = self.forwardClusterHead(embededInput)
             clusterPred = torch.argmax(clusterProb,dim=1)
             clusterPredResult.append(clusterPred)
-            nowLabelResult.append(label)
+            gtLabelResult.append(label)
 
         clusterPredResult =torch.cat(clusterPredResult)
-        nowLabelResult = torch.cat(nowLabelResult)
+        gtLabelResult = torch.cat(gtLabelResult)
+
+        ################################# make noised label with ratio ###############################
+        ################################# make noised label with ratio ###############################
+        minGtLabel = torch.min(torch.unique(gtLabelResult))
+        maxGtLabel = torch.max(torch.unique(gtLabelResult))
+
+        noisedLabels = []
+        noiseTerm = int(self.labelNoiseRatio*len(gtLabelResult))
+        for idx, eachGtLabel in enumerate(gtLabelResult):
+            if idx % noiseTerm == 0:
+                noisedLabels.append(torch.randint(minGtLabel,maxGtLabel+1,(1,)))
+            else:
+                noisedLabels.append(eachGtLabel)
+        ################################# make noised label with ratio ###############################
+        ################################# make noised label with ratio ###############################
 
         for eachCluster in range(len(self.clusterNum)):
             sameClusterIdx = clusterPredResult == eachCluster
+
 
 
 
