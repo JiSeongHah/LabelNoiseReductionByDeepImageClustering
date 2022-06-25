@@ -11,7 +11,7 @@ def get_train_transformations(cfg):
         return transforms.Compose([
             transforms.RandomResizedCrop(**cfg.random_resized_crop),
             transforms.RandomHorizontalFlip(),
-            # transforms.ToTensor(),
+            transforms.ToTensor(),
             transforms.Normalize(**cfg.normalize)
         ])
 
@@ -25,7 +25,7 @@ def get_train_transformations(cfg):
         # Standard augmentation strategy
         return transforms.Compose([
             transforms.Resize([cfg.size, cfg.size]),
-            # transforms.ToTensor(),
+            transforms.ToTensor(),
             transforms.Normalize(**cfg.normalize)
         ])
 
@@ -33,7 +33,7 @@ def get_train_transformations(cfg):
         return transforms.Compose([
             transforms.RandomCrop(cfg.crop_size, padding=4),
             transforms.RandomHorizontalFlip(),
-            # transforms.ToTensor(),
+            transforms.ToTensor(),
             transforms.Normalize(**cfg.normalize)
         ])
 
@@ -46,7 +46,7 @@ def get_train_transformations(cfg):
                 transforms.ColorJitter(**cfg.color_jitter)
             ], p=cfg.color_jitter_random_apply),
             transforms.RandomGrayscale(**cfg.random_grayscale),
-            # transforms.ToTensor(),
+            transforms.ToTensor(),
             transforms.Normalize(**cfg.normalize)
         ])
 
@@ -56,7 +56,7 @@ def get_train_transformations(cfg):
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(cfg.crop_size),
             Augment(cfg.num_strong_augs),
-            # transforms.ToTensor(),
+            transforms.ToTensor(),
             transforms.Normalize(**cfg.normalize),
             Cutout(
                 n_holes=cfg.cutout_kwargs.n_holes,

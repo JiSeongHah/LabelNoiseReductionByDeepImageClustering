@@ -30,7 +30,7 @@ import pickle
 from SPICE_Transformation import get_train_transformations
 from torch.utils.data import TensorDataset
 from SPICE_CONFIG import Config
-
+from SPICE_DATASET_CIFAR10 import CustomCifar10
 
 class doSPICE(nn.Module):
     def __init__(self,
@@ -103,12 +103,12 @@ class doSPICE(nn.Module):
 
         self.ClusterHead = myCluster4SPICE(inputDim=self.embedSize,
                                             dim1=cDim1,
-                                            dim2=cDim1)
+                                            clusters=self.clusterNum)
 
-        transform = transforms.Compose([transforms.ToTensor()])
-        self.dataset = CIFAR10(root='~/', train=True, download=True, transform=transform)
+        # transform = transforms.Compose([transforms.ToTensor()])
+        self.dataset = CustomCifar10(downDir='~/', transform1=self.weakAug,transform2=self.strongAug)
         self.trainDataloader = DataLoader(self.dataset,
-                                          batch_size=self.trnBSize,
+                                          batch_size = self.trnBSize,
                                           shuffle=True,
                                           num_workers=2)
 
@@ -138,14 +138,14 @@ class doSPICE(nn.Module):
 
     def forwardClusterHead(self,x):
 
-        
+
         predBefSoftmax = self.ClusterHead(x)
 
         SOFTMAX = nn.Softmax(dim=1)
 
         predProb = SOFTMAX(predBefSoftmax)
 
-        return predProb.cpu().clone().detach()
+        return predProb
 
     def calLoss(self,logits,labels):
         if self.lossMethod == 'CE':
@@ -207,7 +207,8 @@ class doSPICE(nn.Module):
         TDataLoader = tqdm(self.trainDataloader)
         globalTime = time.time()
 
-        for idx, (inputs, label) in enumerate(TDataLoader):
+        for idx, (inputsRaw,inputsTrans1,inputsTrans2, label) in enumerate(TDataLoader):
+
 
             ######################################### E STEP ############################################
             ######################################### E STEP ############################################
@@ -216,34 +217,30 @@ class doSPICE(nn.Module):
             self.ClusterHead.eval()
 
             # M/K will be selected for topk
-            topkNum = int(inputs.size(0)/self.clusterNum)
+            topkNum = int(inputsRaw.size(0)/self.clusterNum)
             localTime = time.time()
-
-            weakAugedInput = self.weakAug(inputs.clone().detach())
-            weakAugedInput = weakAugedInput.to(self.device)
-            inputs = inputs.to(self.device)
-
+            inputsRaw = inputsRaw.float()
 
             with torch.set_grad_enabled(False):
                 # FB means from First Branch
                 # First branch change input to embedding vector
                 # eachFeatVecsFB  : (batch size , embeding size)
-                eachFeatVecsFB = self.FeatureExtractorBYOL(inputs)
+                eachFeatVecsFB = self.FeatureExtractorBYOL(inputsRaw.to(self.device))
                 eachFeatVecsFB = eachFeatVecsFB.cpu().clone().detach()
 
                 # SB means from Second Branch
                 # Second Branch change weakly augmented input to embedding vector
                 # eachFeatVecsSB  : (batch size , embedSize)
-                eachFeatVecsSB = self.FeatureExtractorBYOL(weakAugedInput)
-                eachFeatVecsSB = eachFeatVecsSB.cpu().clone().detach()
-                print(f'eachFeatVecsSB is in deivce : {eachFeatVecsSB.device}')
+                eachFeatVecsSB = self.FeatureExtractorBYOL(inputsTrans1.to(self.device))
+                # eachFeatVecsSB = eachFeatVecsSB.cpu().clone().detach()
 
                 #eachProbs : (bach_size, cluster num)
                 # probs calculated by embedding vector from second branch
-                eachProbsSB = self.forwardClusterHead(eachFeatVecsSB.to(self.device))
+                eachProbsSB = self.forwardClusterHead(eachFeatVecsSB)
 
             #topkConfidence : (topk num , cluster num)
-            topkConfidence = torch.topk(eachProbsSB,dim=0,k=topkNum).indices
+            topkConfidence = torch.topk(eachProbsSB,dim=0,k=topkNum).indices.cpu()
+
 
             pseudoCentroid = []
             for eachCluster in range(self.clusterNum):
@@ -253,8 +250,8 @@ class doSPICE(nn.Module):
                                                         dim=0,
                                                         index=eachTopK)
                 # sumedTensor : SUM( each selected topk tensor) * K/M
-                # sumedTensor : ( embedSize)
-                sumedTensor = torch.sum(eachSelectedTensor,dim=0) * (self.clusterNum / inputs.size(0))
+                # sumedTensor : ( embedSize )
+                sumedTensor = torch.sum(eachSelectedTensor,dim=0) * (self.clusterNum / inputsRaw.size(0))
                 pseudoCentroid.append(sumedTensor)
 
             pseudoCentroid = torch.stack(pseudoCentroid)
@@ -285,7 +282,7 @@ class doSPICE(nn.Module):
 
             # finalPseudoLabel : (batch size - filtered num, clutser Num)
             finalPseudoLabel = F.softmax(batchPseudoLabel+batchNullPart,dim=1)
-            filteredInput = inputs.cpu().clone().detach()[check4notTrain != 0]
+            filteredInput = inputsTrans2[check4notTrain != 0].cpu().clone().detach()
 
 
             ######################################### E STEP ############################################
@@ -294,16 +291,15 @@ class doSPICE(nn.Module):
 
             self.ClusterHead.train()
 
-            strongAugedInput = self.strongAug(filteredInput)
-
             with torch.set_grad_enabled(True):
-                strongAugedInput = strongAugedInput.to(self.device)
-                strongAugedFeats = self.FeatureExtractorBYOL(strongAugedInput)
+                strongAugedFeats = self.FeatureExtractorBYOL(filteredInput.to(self.device))
 
-                predProbs = self.ClusterHead(strongAugedFeats)
-                predProbs = predProbs.cpu()
+                SOFTMAX = nn.Softmax(dim=1)
+                predProbs = self.forwardClusterHead(strongAugedFeats)
+                predProbs = SOFTMAX(predProbs.cpu())
+                print(torch.max(predProbs),torch.argmax(predProbs,dim=1))
 
-                lossResult = self.ClusterHead.getLoss(x=predProbs,label=finalPseudoLabel)
+                lossResult = self.ClusterHead.getLoss(pred=predProbs,label=finalPseudoLabel)
                 # lossMean = sum(loss for loss in lossDicts.values())/self.numHead
 
                 self.optimizerCHead.zero_grad()
@@ -318,7 +314,29 @@ class doSPICE(nn.Module):
                 TDataLoader.set_description(f'Processing : {idx} / {len(TDataLoader)}')
                 TDataLoader.set_postfix(Gelapsed=globalTimeElaps,
                                         Lelapsed=localTimeElaps,
-                                        )
+                                        LOSS=lossResult.item())
+
+        # print(f'eachFeatVecFB is in device : {eachFeatVecsFB.device}')
+        # print(f'eachFeatVecSB is in device : {eachFeatVecsSB.device}')
+        # print(f'eachProbsSB is in device : {eachProbsSB.device}')
+        # print(f'topkConfidence is in device : {topkConfidence.device}')
+        # print(f'pseudoCentroid is in device : {pseudoCentroid.device}')
+        # print(f'normalizedCentroid is in : {normalizedCentroid.device}')
+        # print(f'normalizedFeatsFB is in {normalizedFeatsFB.device}')
+        # print(f'cosineSim is in :{cosineSim.device}')
+        # print(f'topkSim is in : {topkSim.device}')
+        # print(f'inputsRaw is in : {inputsRaw.device}')
+        # print(f'inputstrans1 is in : {inputsTrans1.device}')
+        # print(f'inputstrans2 is in : {inputsTrans2.device}')
+        #
+        # del predProbs
+        # del eachProbsSB
+        # del topkConfidence
+        # del filteredInput
+        # del eachFeatVecsFB
+        # del eachFeatVecsSB
+        # del strongAugedFeats
+        # del TDataLoader
 
         self.ClusterHead.eval()
 
@@ -333,9 +351,10 @@ class doSPICE(nn.Module):
         gtLabelResult = []
 
         # predict cluster for each inputs
-        for idx, (inputs, label) in enumerate(TDataLoader):
+        for idx, (inputsRaw,inputsTrans1,inputsTrans2, label) in enumerate(TDataLoader):
 
-            embededInput = self.FeatureExtractorBYOL(inputs)
+            inputsRaw=inputsRaw.float()
+            embededInput = self.FeatureExtractorBYOL(inputsRaw.to(self.device))
 
             clusterProb = self.forwardClusterHead(embededInput)
             clusterPred = torch.argmax(clusterProb,dim=1)
@@ -345,7 +364,8 @@ class doSPICE(nn.Module):
         # result of prediction for each inputs
         clusterPredResult =torch.cat(clusterPredResult)
         # ground truth label for each inputs
-        gtLabelResult = torch.cat(gtLabelResult)
+        gtLabelResult = torch.cat(gtLabelResult).unsqueeze(1)
+
 
         ################################# make noised label with ratio ###############################
         ################################# make noised label with ratio ###############################
@@ -358,28 +378,41 @@ class doSPICE(nn.Module):
         noisedLabels4AccCheck = []
         # noiseInserTerm : for this term, noised label is inserted into total labels
         noiseInsertTerm = int(self.labelNoiseRatio*len(gtLabelResult))
-        for idx,eachClusterPred, eachGtLabel in enumerate(zip(clusterPredResult,gtLabelResult)):
+        for idx,(eachClusterPred, eachGtLabel) in enumerate(zip(clusterPredResult,gtLabelResult)):
             if idx % noiseInsertTerm == 0:
-                noisedLabels.append(torch.randint(minGtLabel,maxGtLabel+1,(1,)))
-                noisedLabels4AccCheck.append([eachClusterPred,eachGtLabel,torch.randint(minGtLabel,maxGtLabel+1,(1,))])
+                noisedLabels.append(torch.randint(minGtLabel.cpu(),
+                                                  maxGtLabel+1,(1,)))
+                noisedLabels4AccCheck.append([eachClusterPred.cpu(),
+                                              eachGtLabel.cpu(),
+                                              torch.randint(minGtLabel,maxGtLabel+1,(1,))])
             else:
                 noisedLabels.append(eachGtLabel)
+        noisedLabels = torch.cat(noisedLabels)
         ################################# make noised label with ratio ###############################
         ################################# make noised label with ratio ###############################
 
         # dict containing which labels is mode in each cluster
         modelLabelPerCluster= dict()
-        for eachCluster in range(len(self.clusterNum)):
+        for eachCluster in range(self.clusterNum):
             sameClusterIdx = clusterPredResult == eachCluster
-            modeLabel = torch.mode(noisedLabels[sameClusterIdx]).values
+            try:
+                modeLabel = torch.mode(noisedLabels[sameClusterIdx]).values
+            except:
+                modeLabel = torch.tensor([])
             modelLabelPerCluster[eachCluster] = modeLabel
+            print(eachCluster,modelLabelPerCluster[eachCluster])
 
         accCheck = []
         for eachCheckElement in noisedLabels4AccCheck:
-            if modelLabelPerCluster[eachCheckElement[0]] == eachGtLabel:
+            eachPredictedLabel = eachCheckElement[0].item()
+            eachGroundTruthLabel = eachCheckElement[1]
+            # if modelLabelPerCluster[eachPredictedLabel].size(0) != 0:
+
+            if modelLabelPerCluster[eachPredictedLabel] == eachGroundTruthLabel:
                 accCheck.append(1)
             else:
                 accCheck.append(0)
+
 
         self.clusterOnlyAccLst.append(np.mean(accCheck))
         print(f'validation step end with accuracy : {np.mean(accCheck)}')
@@ -410,9 +443,12 @@ class doSPICE(nn.Module):
         plt.clf()
         plt.cla()
 
-    def executeTrainingHeadOnly(self):
+    def executeTrainingHeadOnly(self):\
 
+        # time.sleep(10)
         self.trainHeadOnly()
+        print('training done')
+        # time.sleep(10)
         self.validationHeadOnly()
         self.validationHeadOnlyEnd()
 
@@ -620,7 +656,7 @@ do = doSPICE(modelLoadDir=modelLoadDir,
              modelLoadNum=modelLoadNum,
              plotSaveDir=modelLoadDir+'dirHeadOnlyTest1/',
              embedSize=embedSize,
-             trnBSize=10000,
+             trnBSize=1000,
              configPath=configPath,
              clusterNum=clusterNum)
 

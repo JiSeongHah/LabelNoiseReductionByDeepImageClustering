@@ -539,18 +539,19 @@ class myCluster4SPICE(nn.Module):
     def __init__(self,
                  inputDim,
                  dim1,
-                 dim2,
+                 clusters,
                  lossMethod='CE'):
         super(myCluster4SPICE, self).__init__()
 
         self.inputDim = inputDim
         self.dim1 = dim1
-        self.dim2 = dim2
+        self.clusters = clusters
+
 
         self.MLP = nn.Sequential(
             nn.Linear(in_features=self.inputDim,out_features=self.dim1),
             nn.ReLU(inplace=True),
-            nn.Linear(in_features=self.dim1,out_features=self.dim2)
+            nn.Linear(in_features=self.dim1,out_features=self.clusters)
         )
 
         self.lossMethod = lossMethod
