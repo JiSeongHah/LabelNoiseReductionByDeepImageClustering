@@ -15,7 +15,7 @@ import numpy as np
 import math
 from byol_pytorch import BYOL
 from torchvision import models
-from MY_MODELS import ResNet,BasicBlock,BottleNeck,myCluster4SPICE,
+from MY_MODELS import ResNet,BasicBlock,BottleNeck,myCluster4SPICE
 from torchvision.datasets import CIFAR10
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
@@ -29,11 +29,14 @@ from sklearn.neighbors import KNeighborsClassifier
 import pickle
 from SPICE_Transformation import get_train_transformations
 from torch.utils.data import TensorDataset
+from SPICE_CONFIG import Config
+
 
 class doSPICE(nn.Module):
     def __init__(self,
                  modelLoadDir,
                  modelLoadNum,
+                 plotSaveDir,
                  embedSize,
                  configPath,
                  clusterNum,
@@ -53,7 +56,8 @@ class doSPICE(nn.Module):
 
         self.modelLoadDir = modelLoadDir
         self.modelLoadNum = modelLoadNum
-
+        self.plotSaveDir = plotSaveDir
+        createDirectory(self.plotSaveDir)
         self.embedSize = embedSize
 
         self.cDim1 = cDim1
@@ -123,7 +127,10 @@ class doSPICE(nn.Module):
                                       eps=1e-9,
                                       weight_decay=self.wDecay)
 
+        self.clusterOnlyAccLst = []
         self.clusterOnlyLossLst = []
+        self.clusterOnlyLossLstAvg = []
+
 
 
         self.FeatureExtractorBYOL.to(self.device)
@@ -131,9 +138,12 @@ class doSPICE(nn.Module):
 
     def forwardClusterHead(self,x):
 
+        
         predBefSoftmax = self.ClusterHead(x)
 
-        predProb = nn.Softmax(predBefSoftmax,dim=1)
+        SOFTMAX = nn.Softmax(dim=1)
+
+        predProb = SOFTMAX(predBefSoftmax)
 
         return predProb.cpu().clone().detach()
 
@@ -219,17 +229,18 @@ class doSPICE(nn.Module):
                 # First branch change input to embedding vector
                 # eachFeatVecsFB  : (batch size , embeding size)
                 eachFeatVecsFB = self.FeatureExtractorBYOL(inputs)
-                eachFeatVecsFB = eachFeatVecs.cpu().clone().detach()
+                eachFeatVecsFB = eachFeatVecsFB.cpu().clone().detach()
 
                 # SB means from Second Branch
                 # Second Branch change weakly augmented input to embedding vector
                 # eachFeatVecsSB  : (batch size , embedSize)
                 eachFeatVecsSB = self.FeatureExtractorBYOL(weakAugedInput)
-                eachFeatVecsSB = eachFeatVecSB.cpu().clone().detach()
+                eachFeatVecsSB = eachFeatVecsSB.cpu().clone().detach()
+                print(f'eachFeatVecsSB is in deivce : {eachFeatVecsSB.device}')
 
                 #eachProbs : (bach_size, cluster num)
                 # probs calculated by embedding vector from second branch
-                eachProbsSB = self.forwardClusterHead(eachFeatVecsSB)
+                eachProbsSB = self.forwardClusterHead(eachFeatVecsSB.to(self.device))
 
             #topkConfidence : (topk num , cluster num)
             topkConfidence = torch.topk(eachProbsSB,dim=0,k=topkNum).indices
@@ -321,6 +332,7 @@ class doSPICE(nn.Module):
         clusterPredResult = []
         gtLabelResult = []
 
+        # predict cluster for each inputs
         for idx, (inputs, label) in enumerate(TDataLoader):
 
             embededInput = self.FeatureExtractorBYOL(inputs)
@@ -330,7 +342,9 @@ class doSPICE(nn.Module):
             clusterPredResult.append(clusterPred)
             gtLabelResult.append(label)
 
+        # result of prediction for each inputs
         clusterPredResult =torch.cat(clusterPredResult)
+        # ground truth label for each inputs
         gtLabelResult = torch.cat(gtLabelResult)
 
         ################################# make noised label with ratio ###############################
@@ -338,32 +352,69 @@ class doSPICE(nn.Module):
         minGtLabel = torch.min(torch.unique(gtLabelResult))
         maxGtLabel = torch.max(torch.unique(gtLabelResult))
 
+        # noisedLabels : var for total labels with noised label
         noisedLabels = []
-        noiseTerm = int(self.labelNoiseRatio*len(gtLabelResult))
-        for idx, eachGtLabel in enumerate(gtLabelResult):
-            if idx % noiseTerm == 0:
+        # noisedLabels4AccCheck : var for checking accruacy of head, contains noised label only
+        noisedLabels4AccCheck = []
+        # noiseInserTerm : for this term, noised label is inserted into total labels
+        noiseInsertTerm = int(self.labelNoiseRatio*len(gtLabelResult))
+        for idx,eachClusterPred, eachGtLabel in enumerate(zip(clusterPredResult,gtLabelResult)):
+            if idx % noiseInsertTerm == 0:
                 noisedLabels.append(torch.randint(minGtLabel,maxGtLabel+1,(1,)))
+                noisedLabels4AccCheck.append([eachClusterPred,eachGtLabel,torch.randint(minGtLabel,maxGtLabel+1,(1,))])
             else:
                 noisedLabels.append(eachGtLabel)
         ################################# make noised label with ratio ###############################
         ################################# make noised label with ratio ###############################
 
+        # dict containing which labels is mode in each cluster
+        modelLabelPerCluster= dict()
         for eachCluster in range(len(self.clusterNum)):
             sameClusterIdx = clusterPredResult == eachCluster
+            modeLabel = torch.mode(noisedLabels[sameClusterIdx]).values
+            modelLabelPerCluster[eachCluster] = modeLabel
+
+        accCheck = []
+        for eachCheckElement in noisedLabels4AccCheck:
+            if modelLabelPerCluster[eachCheckElement[0]] == eachGtLabel:
+                accCheck.append(1)
+            else:
+                accCheck.append(0)
+
+        self.clusterOnlyAccLst.append(np.mean(accCheck))
+        print(f'validation step end with accuracy : {np.mean(accCheck)}')
 
 
+    def validationHeadOnlyEnd(self):
 
+        self.clusterOnlyLossLstAvg.append(np.mean(self.clusterOnlyLossLst))
+        self.clusterOnlyLossLst.clear()
 
+        fig = plt.figure(constrained_layout=True)
 
+        ax1 = fig.add_subplot(1, 2, 1)
+        ax1.plot(range(len(self.clusterOnlyLossLstAvg)), self.clusterOnlyLossLstAvg)
+        ax1.set_xlabel('epoch')
+        ax1.set_ylabel('loss')
+        ax1.set_title('Head Only Train Loss')
 
+        ax2 = fig.add_subplot(1, 2, 2)
+        ax2.plot(range(len(self.clusterOnlyAccLst)), self.clusterOnlyAccLst)
+        ax2.set_xlabel('epoch')
+        ax2.set_ylabel('acc')
+        ax2.set_title(f'val acc , noise ratio : {self.labelNoiseRatio}')
 
+        plt.savefig(self.plotSaveDir+'HeadOnlyResult.png',dpi=200)
+        print('saving head only plot complete !')
+        plt.close()
+        plt.clf()
+        plt.cla()
 
+    def executeTrainingHeadOnly(self):
 
-
-
-
-
-
+        self.trainHeadOnly()
+        self.validationHeadOnly()
+        self.validationHeadOnlyEnd()
 
 
     def trainJointly(self):
@@ -559,7 +610,7 @@ class doSPICE(nn.Module):
 
 
 modelLoadDir = '/home/a286winteriscoming/'
-modelLoadNum = 'test2000.pt'
+modelLoadNum = 'test2000'
 embedSize = 256
 configPath = '/home/a286winteriscoming/PycharmProjects/DATA_VALUATION_REINFORCE/SPICE_Config_cifar10.py'
 clusterNum = 10
@@ -567,9 +618,14 @@ clusterNum = 10
 
 do = doSPICE(modelLoadDir=modelLoadDir,
              modelLoadNum=modelLoadNum,
+             plotSaveDir=modelLoadDir+'dirHeadOnlyTest1/',
              embedSize=embedSize,
+             trnBSize=10000,
              configPath=configPath,
              clusterNum=clusterNum)
+
+for i in range(10000):
+    do.executeTrainingHeadOnly()
 
 
 

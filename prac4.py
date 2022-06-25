@@ -2,6 +2,9 @@ import torch
 import numpy as np
 import random
 import time
+import torchvision.transforms as transforms
+from torchvision.datasets import CIFAR10
+from torch.utils.data import DataLoader
 # labelLen = 50000
 #
 # x = torch.randint(10,(labelLen,))
@@ -14,17 +17,24 @@ import time
 # z = torch.randint(10,(1,))
 # print(z)
 
-x = torch.randint(0,5,(10,))
-y = torch.randint(0,5,(10,))
+tt = []
+for i in range(100):
+    tt.append(torch.randint(0,1,(1,)))
 
-z = torch.randint(0,2,(10,))
+tt1 = torch.stack(tt)
+tt2 = torch.cat(tt)
 
-mask = z == 0
-print(mask)
-print(x)
-print(x[mask])
-print(y)
-print(y[mask])
+print(tt1.size(),tt2.size())
+
+
+
+transform = transforms.Compose([transforms.ToTensor()])
+dataset = CIFAR10(root='~/', train=True, download=True, transform=transform)
+
+theDataloader = DataLoader(dataset,batch_size=32,shuffle=True,num_workers=2)
+
+for inputs,labels in theDataloader:
+    print(inputs.size(),labels.size())
 
 
 
