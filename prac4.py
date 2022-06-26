@@ -5,30 +5,29 @@ import time
 import torchvision.transforms as transforms
 from torchvision.datasets import CIFAR10
 from torch.utils.data import DataLoader
-# labelLen = 50000
-#
-# x = torch.randint(10,(labelLen,))
-#
-# print(x)
-#
-# y = torch.unique(x)
-# print(torch.max(y),torch.min(y))
-#
-# z = torch.randint(10,(1,))
-# print(z)
-
-x = torch.randint(0,5,(10,))
-y = torch.randint(0,2,(10,))
-
-idx = y ==10
-print(x)
-print(x.size())
-print(idx)
-print(x[idx])
-print(x[idx].size(0))
-# print(torch.mode(x[idx]))
+from MY_MODELS import myCluster4SPICE
 
 
+x = torch.randn(10000,256)
+
+model = myCluster4SPICE(inputDim=256,
+                        dim1=256,
+                        clusters=500)
+
+# torch.nn.init.kaiming_normal(model.MLP)
+
+y= model(x)
+print(torch.argmax(y,dim=1))
+
+lst = []
+for eachunique in torch.unique(torch.argmax(y,dim=1)):
+    print(f'{torch.count_nonzero((torch.argmax(y,dim=1)) == eachunique)} for {eachunique}')
+    lst.append(torch.count_nonzero((torch.argmax(y,dim=1)) == eachunique))
+
+import matplotlib.pyplot as plt
+
+plt.plot(torch.unique(torch.argmax(y,dim=1)),lst)
+plt.show()
 
 
 
