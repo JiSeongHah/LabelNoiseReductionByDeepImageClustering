@@ -3,9 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import math
+from torch.optim import Adam,AdamW,SGD
 from byol_pytorch import BYOL
 from torchvision import models
-from MY_MODELS import ResNet,BasicBlock,BottleNeck
+from MY_MODELS import callAnyResnet
 from torchvision.datasets import CIFAR10
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
@@ -19,29 +20,36 @@ import os
 
 class doBYOL(nn.Module):
     def __init__(self,
+                 modelType,
+                 L2NormalEnd,
                  trnBSize,
                  gpuUse,
                  saveRange,
                  embedSize,
                  doSimSiam,
                  plotSaveDir,
-                 modelSaveDir):
+                 whichOptim,
+                 modelSaveDir,
+                 wDecay=0.001):
         super(doBYOL,self).__init__()
 
+
+        self.modelType = modelType
+        self.L2NormalEnd = L2NormalEnd
         self.trnBSize = trnBSize
         self.gpuUse = gpuUse
         self.saveRange = saveRange
         self.embedSize = embedSize
         self.doSimSiam = doSimSiam
-
+        self.whichOptim = whichOptim
+        self.wDecay = wDecay
         self.plotSaveDir = plotSaveDir
         self.modelSaveDir = modelSaveDir
 
 
-        self.modelBYOL = ResNet(block=BottleNeck,
-                                num_blocks=[3,4,6,3],
-                                num_classes=self.embedSize,
-                                mnst_ver=False)
+        self.modelBYOL = callAnyResnet(modelType=self.modelType,
+                                       numClass = self.embedSize,
+                                       L2NormalEnd=self.L2NormalEnd)
 
         if self.doSimSiam == True:
 
@@ -56,7 +64,12 @@ class doBYOL(nn.Module):
                                 hidden_layer='avgpool'
                                 )
 
-        self.optimizer = torch.optim.Adam(self.learner.parameters(), lr=3e-4)
+        if self.whichOptim == 'adam':
+            self.optimizer = Adam(self.learner.parameters(), weight_decay=self.wDecay, lr=3e-4)
+        elif self.whichOptim == 'adamw':
+            self.optimizer = AdamW(self.learner.parameters(), weight_decay=self.wDecay,lr=3e-4)
+        else:
+            self.optimizer = SGD(self.learner.parameters(), lr=3e-4)
 
         transform = transforms.Compose([transforms.ToTensor()])
         self.dataset = CIFAR10(root='~/', train=True, download=True, transform=transform)
@@ -137,28 +150,40 @@ class doBYOL(nn.Module):
 
 os.environ['CUDA_VISIBLE_DEVICES'] = "2"
 
+L2NormalEnd= True
+modelType = 'resnet18'
 trnBSize = 4096
 gpuUse = True
 iterNum = 100000
-embedSize = 128*6
+embedSize = 512
 doSimSiam = False
 saveRange = 50
+whichOptim = 'adam'
+wDecay = 0.0005
 specificName = mk_name(dirBYOL='/',
+                       modelType=modelType,
+                       L2NormalEnd=L2NormalEnd,
+                       optim=whichOptim,
+                       wDecay=wDecay,
                        trnBSize=trnBSize,
                        embedSize=embedSize,
                        doSimSiam=doSimSiam)
-baseDir = '/home/a286/DVMETRIC/'
+
+baseDir = '/home/a286/hjs_dir1/BYOL_RESULT/'
 
 plotSaveDir = baseDir + specificName + '/'
 modelSaveDir = baseDir + specificName + '/MODELS/'
 createDirectory(modelSaveDir)
 
 
-myBYOL = doBYOL(trnBSize=trnBSize,
+myBYOL = doBYOL(modelType=modelType,
+                L2NormalEnd=L2NormalEnd,
+                trnBSize=trnBSize,
                 gpuUse=gpuUse,
                 saveRange=saveRange,
                 embedSize=embedSize,
                 doSimSiam=doSimSiam,
+                whichOptim=whichOptim,
                 plotSaveDir=plotSaveDir,
                 modelSaveDir=modelSaveDir
                 )
