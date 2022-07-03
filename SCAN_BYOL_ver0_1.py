@@ -7,7 +7,7 @@ from torchvision.datasets import CIFAR10
 from torch.utils.data import DataLoader
 from torchvision import models
 from torch.optim import AdamW, Adam, SGD
-from MY_MODELS import ResNet, BasicBlock, BottleNeck, callAnyResnet
+from MY_MODELS import ResNet, BasicBlock, Bottleneck, callAnyResnet, myCluster4SCAN, myMultiCluster4SCAN
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,7 +15,6 @@ import numpy as np
 import math
 from byol_pytorch import BYOL
 from torchvision import models
-from MY_MODELS import ResNet, BasicBlock, BottleNeck, myCluster4SCAN, myMultiCluster4SCAN
 from torchvision.datasets import CIFAR10
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
@@ -121,10 +120,9 @@ class doSCAN(nn.Module):
             print('학습을 진행하는 기기:', self.device)
 
         self.FeatureExtractorBYOL = callAnyResnet(modelType=self.modelType,
-                                                  numClass=self.embedSize,
-                                                  L2NormalEnd=self.L2NormalEnd)
+                                                  numClass=self.embedSize)
         print(f'loading {modelLoadDir} {modelLoadNum}')
-        modelStateDict = torch.load(self.modelLoadDir + self.modelLoadNum + '.pt')
+        modelStateDict = torch.load(self.modelLoadDir + self.modelLoadNum)
         self.FeatureExtractorBYOL.load_state_dict(modelStateDict)
         print(f'loading {modelLoadDir} {modelLoadNum} successfully')
 
@@ -384,21 +382,23 @@ class doSCAN(nn.Module):
         self.valHeadOnlyEnd()
 
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
+os.environ['CUDA_VISIBLE_DEVICES'] = "3"
 modelLoadDir = '/home/a286winteriscoming/'
 modelLoadDir = '/home/a286/hjs_dir1/mySCAN0/'
-modelLoadNum = 'normalizedVerembSize512'
-embedSize = 512
+# modelLoadNum = 'normalizedVerembSize512.pt'
+modelLoadNum = 'simclr_cifar-10.pth.tar'
+embedSize = 128
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Config_cifar10.py'
-clusterNum = 50
-entropyWeight = 5.0
-cDim1 = 512
-trnBSize = 4096
-
+clusterNum = 10
+entropyWeight = 10.0
+cDim1 = 128
+trnBSize = 512
+labelNoiseRatio = 0.2
 
 plotsaveName = mk_name(embedSize=embedSize,
                        clusterNum=clusterNum,
                        entropyWeight=entropyWeight,
+                       labelNoiseRatio = labelNoiseRatio,
                        cDim1=cDim1
                        )
 
@@ -411,6 +411,7 @@ do =  doSCAN(modelSaveLoadDir=modelLoadDir,
              NNSaveDir = modelLoadDir + 'dirHeadOnlyTest1/' + plotsaveName + '/',
              embedSize = embedSize,
              cDim1=cDim1,
+             labelNoiseRatio = labelNoiseRatio,
              configPath = configPath,
              trnBSize=trnBSize,
              clusterNum = clusterNum)
