@@ -17,6 +17,10 @@ class CustomCifar10(Dataset):
         self.transform1 = transform1
         self.transform2 = transform2
 
+        self.basicTransform = transforms.Compose([transforms.ToTensor(),
+                                                  transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                                       std=[0.229, 0.224, 0.225])])
+
         preDataset = CIFAR10(root='~/', train=True, download=True)
 
         self.dataInput = preDataset.data
@@ -35,10 +39,10 @@ class CustomCifar10(Dataset):
 
         transform1AugedImg = self.transform1(imgPIL)
 
-
         transfrom2AugedImg = self.transform2(imgPIL)
 
-        return np.transpose(img,(2,0,1)) , transform1AugedImg, transfrom2AugedImg, label
+        # self.basicTransform(np.transpose(img, (2, 0, 1)))
+        return self.basicTransform(img) , transform1AugedImg, transfrom2AugedImg, label
 
 
 # from SPICE_CONFIG import Config

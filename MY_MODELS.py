@@ -605,18 +605,18 @@ class myCluster4SPICE(nn.Module):
             b = F.softmax(actions, dim=1) * F.log_softmax(actions, dim=1)
 
         if len(b.size()) == 2:  # Sample-wise entropy
-            Entropy = -b.sum(dim=1).mean()
+            Entropy = b.sum(dim=1).mean()
             return Entropy
         elif len(b.size()) == 1:  # Distribution-wise entropy
-            Entropy = - b.sum()
+            Entropy = b.sum()
             return Entropy
         else:
             raise ValueError('Input tensor is %d-Dimensional' % (len(b.size())))
 
-    def getLoss(self,pred,label,withEntropy=False,entropyWeight=5.0):
+    def getLoss(self,pred,label,withEntropy=False,entropyWeight=5.0,clusteringWeight=1.0):
 
         if withEntropy ==True:
-            totalLoss = self.LOSS(pred,label) + self.calEntropy(actions=pred)
+            totalLoss = [clusteringWeight * self.LOSS(pred,label), entropyWeight * self.calEntropy(actions=pred)]
 
         else:
             totalLoss = self.LOSS(pred,label)
@@ -625,7 +625,7 @@ class myCluster4SPICE(nn.Module):
 
     def forward(self,x):
 
-        out = F.softmax(self.MLP(x))
+        out = F.softmax(self.MLP(x),dim=1)
 
         return out
 
@@ -671,7 +671,7 @@ class myMultiCluster4SPICE(nn.Module):
 
 
 
-    def getTotalLoss(self,x,label,withEntropy=False,entropyWeight=5.0):
+    def getTotalLoss(self,x,label,withEntropy=False,entropyWeight=5.0,clusteringWeight=1.0):
 
         totalLoss = {}
 
@@ -679,7 +679,8 @@ class myMultiCluster4SPICE(nn.Module):
             eachLossH = self.__getattr__(f'eachHead_{h}').getLoss(pred=x[h],
                                                                   label=label[h],
                                                                   withEntropy=withEntropy,
-                                                                  entropyWeight=entropyWeight)
+                                                                  entropyWeight=entropyWeight,
+                                                                  clusteringWeight=clusteringWeight)
             totalLoss[f'eachHead_{h}'] = eachLossH
 
         return totalLoss
@@ -689,6 +690,119 @@ class myMultiCluster4SPICE(nn.Module):
         return self.__getattr__(f'eachHead_{headIdxWithMinLoss}').forward(x=inputs)
 
 
+class myCluster4SCAN(nn.Module):
+    def __init__(self,
+                 inputDim,
+                 dim1,
+                 nClusters,
+                 lossMethod='CE'):
+        super(myCluster4ScAN, self).__init__()
+
+        self.inputDim = inputDim
+        self.dim1 = dim1
+        self.nClusters = nClusters
+
+
+        self.MLP = nn.Sequential(
+            nn.Linear(in_features=self.inputDim,out_features=self.dim1),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_features=self.dim1,out_features=self.nClusters)
+        )
+
+        self.lossMethod = lossMethod
+        if self.lossMethod == 'CE':
+            self.LOSS = nn.CrossEntropyLoss()
+
+    def calEntropy(self, actions, isActionInput_prob=True):
+
+        if isActionInput_prob == True:
+            x_ = torch.clamp(actions, min=1e-8)
+            b = x_ * torch.log(x_)
+        else:
+            b = F.softmax(actions, dim=1) * F.log_softmax(actions, dim=1)
+
+        if len(b.size()) == 2:  # Sample-wise entropy
+            Entropy = b.sum(dim=1).mean()
+            return Entropy
+        elif len(b.size()) == 1:  # Distribution-wise entropy
+            Entropy = b.sum()
+            return Entropy
+        else:
+            raise ValueError('Input tensor is %d-Dimensional' % (len(b.size())))
+
+    def getLoss(self,pred,label,withEntropy=False,entropyWeight=5.0,clusteringWeight=1.0):
+
+        if withEntropy ==True:
+            totalLoss = [clusteringWeight * self.LOSS(pred,label), entropyWeight * self.calEntropy(actions=pred)]
+
+        else:
+            totalLoss = self.LOSS(pred,label)
+
+        return totalLoss
+
+    def forward(self,x):
+
+        out = F.softmax(self.MLP(x),dim=1)
+
+        return out
+
+
+class myMultiCluster4SCAN(nn.Module):
+    def __init__(self,
+                 inputDim,
+                 dim1,
+                 nClusters,
+                 numHead,
+                 lossMethod='CE'):
+        super(myMultiCluster4SCAN, self).__init__()
+
+        self.inputDim = inputDim
+        self.dim1 = dim1
+        self.nClusters = nClusters
+        self.numHead = numHead
+        self.lossMethod = lossMethod
+
+        for h in range(self.numHead):
+            headH = myCluster4SPICE(inputDim=self.inputDim,
+                                    dim1=self.dim1,
+                                    nClusters=self.nClusters,
+                                    lossMethod=self.lossMethod)
+            self.__setattr__(f'eachHead_{h}',headH)
+
+
+    def forward(self,x,inputDiff=True):
+
+        totalForwardResult = {}
+
+        if inputDiff == True:
+            for h in range(self.numHead):
+                eachForwardResult = self.__getattr__(f'eachHead_{h}').forward(x[h])
+                totalForwardResult[f'eachHead_{h}'] = eachForwardResult
+        else:
+            for h in range(self.numHead):
+                eachForwardResult = self.__getattr__(f'eachHead_{h}').forward(x)
+                totalForwardResult[f'eachHead_{h}'] = eachForwardResult
+
+        return totalForwardResult
+
+
+    def getTotalLoss(self,x,label,withEntropy=False,entropyWeight=5.0,clusteringWeight=1.0):
+
+        totalLoss = {}
+
+        for h in range(self.numHead):
+            eachLossH = self.__getattr__(f'eachHead_{h}').getLoss(pred=x[h],
+                                                                  label=label[h],
+                                                                  withEntropy=withEntropy,
+                                                                  entropyWeight=entropyWeight,
+                                                                  clusteringWeight=clusteringWeight)
+            totalLoss[f'eachHead_{h}'] = eachLossH
+
+        return totalLoss
+
+    def forwardWithMinLossHead(self,inputs,headIdxWithMinLoss):
+
+        return self.__getattr__(f'eachHead_{headIdxWithMinLoss}').forward(x=inputs)
 
 
 

@@ -42,8 +42,8 @@ class doSPICE(nn.Module):
                  configPath,
                  clusterNum,
                  modelType='resnet18',
-                 L2NormalEnd= True,
-                 numRepeat= 10,
+                 L2NormalEnd=True,
+                 numRepeat=10,
                  entropyWeight=5.0,
                  clusteringWeight=1.0,
                  labelNoiseRatio=0.2,
@@ -106,9 +106,9 @@ class doSPICE(nn.Module):
             self.device = torch.device('cpu')
             print('학습을 진행하는 기기:', self.device)
 
-        self.FeatureExtractorBYOL =  callAnyResnet(modelType=self.modelType,
-                                                   numClass = self.embedSize,
-                                                   L2NormalEnd = self.L2NormalEnd)
+        self.FeatureExtractorBYOL = callAnyResnet(modelType=self.modelType,
+                                                  numClass=self.embedSize,
+                                                  L2NormalEnd=self.L2NormalEnd)
         print(f'loading {modelLoadDir} {modelLoadNum}')
         modelStateDict = torch.load(self.modelLoadDir + self.modelLoadNum + '.pt')
         self.FeatureExtractorBYOL.load_state_dict(modelStateDict)
@@ -236,7 +236,7 @@ class doSPICE(nn.Module):
 
                 # eachProbsSB : (bach_size, cluster num)
                 # probs calculated by embedding vector from second branch
-                eachProbsSB = self.ClusterHead.forward(BatchEachFeatVecsSB,inputDiff=False)
+                eachProbsSB = self.ClusterHead.forward(BatchEachFeatVecsSB, inputDiff=False)
 
                 eachFeatvecsStrongAugedVer = self.FeatureExtractorBYOL(inputsTrans2.to(self.device)).cpu()
 
@@ -247,16 +247,15 @@ class doSPICE(nn.Module):
                 eachFeatvecsSB.append(BatchEachFeatVecsSB.cpu())
 
         # del TDataLoader
-        for idx,eachOutputProbs in enumerate(eachProbsSBTotal):
+        for idx, eachOutputProbs in enumerate(eachProbsSBTotal):
             eachProbsSBTotal[idx] = torch.cat(eachOutputProbs)
 
         for eachHeadIdx in range(self.numHeads):
             allocateLst = []
             for eachUnique in torch.unique(torch.argmax(eachProbsSBTotal[0], dim=1)):
-                allocateLst.append([eachUnique,torch.count_nonzero
+                allocateLst.append([eachUnique, torch.count_nonzero
                 ((torch.argmax(eachProbsSBTotal[0], dim=1) == eachUnique).long())])
             print(f'Head {eachHeadIdx} allocated {allocateLst}')
-
 
         print(f'eachProbsSBTotal size is : {eachProbsSBTotal[0].size()}')
         eachFeatVecsFB = torch.cat(eachFeatVecsFB)
@@ -264,7 +263,6 @@ class doSPICE(nn.Module):
         totalInputsTrans2 = torch.cat(totalInputsTrans2)
         print(f'totalInputsTrans2 size is : {totalInputsTrans2.size()}')
         # eachFeatvecsSB = torch.cat(eachFeatvecsSB)
-
 
         pseudoCentroidPerHead = []
 
@@ -292,12 +290,10 @@ class doSPICE(nn.Module):
             # print(f'first peudoCentroid is : {pseudoCentroid[0]}')
             # pseudoCentroid : (clusterNum , embedSize)
 
-
         PseudoInputPerHead = []
         PseudoLabelPerHead = []
         minCheckLst = []
         for eachPseudoCentroid in pseudoCentroidPerHead:
-
             # To calculate cosSim between embedding vector from first branch
             # and Pseudo Centroid
             # normalizedCentroid : (clusterNum, embedSize)
@@ -305,7 +301,6 @@ class doSPICE(nn.Module):
 
             # normalizedFestFB : (total data size, embedSize)
             normalizedFeatsFB = F.normalize(eachFeatVecsFB)
-
 
             # cosineSim : (total data size , clusterNum)
             cosineSim = F.linear(normalizedFeatsFB, normalizedCentroid)
@@ -337,7 +332,6 @@ class doSPICE(nn.Module):
             # for eachPseudo in torch.unique(torch.argmax(finalPseudoLabel, dim=1)):
             #     print(
             #         f'{torch.count_nonzero((torch.argmax(finalPseudoLabel, dim=1) == eachPseudo).long())} fffor {eachPseudo}')
-            
 
             filteredInput = totalInputsTrans2[(check4notTrain != 0) * (check4notTrain <= 2)].cpu().clone().detach()
             print(f'filtered num is : {torch.sum((check4notTrain != 0)).float()}')
@@ -375,7 +369,7 @@ class doSPICE(nn.Module):
                 for eachInnerRepeat in range(innerRepeatNum):
 
                     startIdx = eachInnerRepeat * self.filteredTrnBSize
-                    endIdx = (eachInnerRepeat+1) * self.filteredTrnBSize
+                    endIdx = (eachInnerRepeat + 1) * self.filteredTrnBSize
 
                     batchInputLst = []
                     batchLabelLst = []
@@ -384,7 +378,7 @@ class doSPICE(nn.Module):
                         batchInputLst.append(PseudoInputPerHead[eachHeadIdx][startIdx:endIdx].to(self.device))
                         batchLabelLst.append(PseudoLabelPerHead[eachHeadIdx][startIdx:endIdx])
 
-                    predProbsPerHeads = self.ClusterHead.forward(batchInputLst,inputDiff=True)
+                    predProbsPerHeads = self.ClusterHead.forward(batchInputLst, inputDiff=True)
                     predProbsPerHeads = [eachPredProbs.cpu() for eachPredProbs in predProbsPerHeads]
 
                     lossDict = self.ClusterHead.getTotalLoss(x=predProbsPerHeads,
@@ -393,13 +387,14 @@ class doSPICE(nn.Module):
                                                              entropyWeight=self.entropyWeight,
                                                              clusteringWeight=self.clusteringWeight)
 
-                    lossMean = sum(sum(loss)/innerRepeatNum for loss in lossDict.values()) / self.numHeads
+                    lossMean = sum(sum(loss) / innerRepeatNum for loss in lossDict.values()) / self.numHeads
                     lossMean.backward()
 
                     for h in range(self.numHeads):
-                        self.clusterOnlyClusteringLossDictPerHead[f'head_{h}'].append(lossDict[f'eachHead_{h}'][0].item())
+                        self.clusterOnlyClusteringLossDictPerHead[f'head_{h}'].append(
+                            lossDict[f'eachHead_{h}'][0].item())
                         self.clusterOnlyEntropyLossDictPerHead[f'head_{h}'].append(lossDict[f'eachHead_{h}'][1].item())
-                        self.clusterOnlyTotalLossDictPerHead[f'head_{h}'].append(lossDict[f'eachHead_{h}'][0].item()+
+                        self.clusterOnlyTotalLossDictPerHead[f'head_{h}'].append(lossDict[f'eachHead_{h}'][0].item() +
                                                                                  lossDict[f'eachHead_{h}'][1].item())
 
                     self.clusterOnlyLossLst.append(lossMean.item())
@@ -457,7 +452,7 @@ class doSPICE(nn.Module):
             inputsRaw = inputsRaw.float()
             embededInput = self.FeatureExtractorBYOL(inputsTrans1.to(self.device))
 
-            clusterProb = self.ClusterHead.forwardWithMinLossHead(embededInput,headIdxWithMinLoss=self.minHeadIdx)
+            clusterProb = self.ClusterHead.forwardWithMinLossHead(embededInput, headIdxWithMinLoss=self.minHeadIdx)
             clusterPred = torch.argmax(clusterProb, dim=1).cpu()
             # print(f'clusterPred hase unique ele : {torch.unique(clusterPred)}')
             clusterPredResult.append(clusterPred)
@@ -534,12 +529,13 @@ class doSPICE(nn.Module):
     def validationHeadOnlyEnd(self):
 
         self.clusterOnlyLossLstAvg.append(np.mean(self.clusterOnlyClusteringLossDictPerHead[f'head_{self.minHeadIdx}']))
-        self.clusterOnlyEntropyLossLstAvg.append(np.mean(self.clusterOnlyEntropyLossDictPerHead[f'head_{self.minHeadIdx}']))
+        self.clusterOnlyEntropyLossLstAvg.append(
+            np.mean(self.clusterOnlyEntropyLossDictPerHead[f'head_{self.minHeadIdx}']))
         self.clusterOnlyLossLst.clear()
         self.clusterOnlyEntropyLossLst.clear()
 
         for i in self.clusterOnlyEntropyLossLstAvg:
-            print('entropy loss for each epoch is : ',i)
+            print('entropy loss for each epoch is : ', i)
 
         for h in range(self.numHeads):
             self.clusterOnlyTotalLossDictPerHead[f'head_{h}'] = []
@@ -573,7 +569,7 @@ class doSPICE(nn.Module):
         plt.cla()
 
     def executeTrainingHeadOnly(self):
-            # time.sleep(10)
+        # time.sleep(10)
         self.trainHeadOnly()
         print('training done')
         # time.sleep(10)
@@ -767,17 +763,17 @@ class doSPICE(nn.Module):
         self.FeatureExtractorBYOL.eval()
         self.ClusterHead.eval()
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+
+os.environ['CUDA_VISIBLE_DEVICES'] = "3"
 modelLoadDir = '/home/a286winteriscoming/'
 modelLoadDir = '/home/a286/hjs_dir1/mySPICE0/'
 modelLoadNum = 'normalizedVerembSize512'
 embedSize = 512
 configPath = '/home/a286/hjs_dir1/mySPICE0/SPICE_Config_cifar10.py'
-clusterNum = 50
-entropyWeight = 10.0
+clusterNum = 100
+entropyWeight = 5.0
 cDim1 = 512
-numRepeat= 50
-
+numRepeat = 50
 
 plotsaveName = mk_name(embedSize=embedSize,
                        clusterNum=clusterNum,
@@ -785,11 +781,11 @@ plotsaveName = mk_name(embedSize=embedSize,
                        cDim1=cDim1,
                        numRepeat=numRepeat)
 
-createDirectory(modelLoadDir+'dirHeadOnlyTest1/'+plotsaveName
+createDirectory(modelLoadDir + 'dirHeadOnlyTest1/' + plotsaveName
                 )
 do = doSPICE(modelLoadDir=modelLoadDir,
              modelLoadNum=modelLoadNum,
-             plotSaveDir=modelLoadDir + 'dirHeadOnlyTest1/'+plotsaveName+'/',
+             plotSaveDir=modelLoadDir + 'dirHeadOnlyTest1/' + plotsaveName + '/',
              embedSize=embedSize,
              trnBSize=1000,
              filteredTrnBSize=512,
