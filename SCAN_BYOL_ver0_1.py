@@ -38,6 +38,8 @@ class doSCAN(nn.Module):
     def __init__(self,
                  modelSaveLoadDir,
                  modelLoadName,
+                 headSaveLoadDir,
+                 headLoadNum,
                  plotSaveDir,
                  NNSaveDir,
                  embedSize,
@@ -68,8 +70,10 @@ class doSCAN(nn.Module):
                  ):
         super(doSCAN, self).__init__()
 
-        self.modelLoadDir = modelLoadDir
-        self.modelLoadNum = modelLoadNum
+        self.modelSaveLoadDir = modelSaveLoadDir
+        self.modelLoadName = modelLoadName
+        self.headSaveLoadDir = headSaveLoadDir
+        self.headLoadNum = headLoadNum
         self.plotSaveDir = plotSaveDir
         createDirectory(self.plotSaveDir)
         self.downDir = downDir
@@ -120,16 +124,29 @@ class doSCAN(nn.Module):
             print('학습을 진행하는 기기:', self.device)
 
         self.FeatureExtractorBYOL = callAnyResnet(modelType=self.modelType,
-                                                  numClass=self.embedSize)
-        print(f'loading {modelLoadDir} {modelLoadNum}')
-        modelStateDict = torch.load(self.modelLoadDir + self.modelLoadNum)
+                                                  numClass=self.embedSize
+                                                  )
+        print(f'loading {modelSaveLoadDir} {modelLoadName}')
+        modelStateDict = torch.load(self.modelSaveLoadDir + self.modelLoadName)
         self.FeatureExtractorBYOL.load_state_dict(modelStateDict)
-        print(f'loading {modelLoadDir} {modelLoadNum} successfully')
+        print(f'loading {modelSaveLoadDir}{modelLoadName} successfully')
 
         self.ClusterHead = myMultiCluster4SCAN(inputDim=self.embedSize,
                                                 dim1=self.cDim1,
                                                 nClusters=self.clusterNum,
                                                 numHead=self.numHeads)
+        try:
+            headLoadedDict= torch.load(self.headSaveLoadDir+self.headLoadNum+'.pt')
+            self.ClusterHead.load_state_dict(headLoadedDict)
+        except:
+            self.ClusterHead = myMultiCluster4SCAN(inputDim=self.embedSize,
+                                                   dim1=self.cDim1,
+                                                   nClusters=self.clusterNum,
+                                                   numHead=self.numHeads)
+            print('failed loading saved head, so start with fresh head ...')
+            self.headLoadNum = 0
+            time.sleep(5)
+
 
         # transform = transforms.Compose([transforms.ToTensor()])
         # self.baseDataset = Cifar104SCAN(downDir='~/', transform1=self.weakAug)
@@ -381,12 +398,21 @@ class doSCAN(nn.Module):
         self.valHeadOnly()
         self.valHeadOnlyEnd()
 
+    def saveHead(self,iteredNum):
+        torch.save(self.ClusterHead.state_dict(),self.headSaveLoadDir+str(iteredNum+self.headLoadNum)+'.pt')
+        print(f'saving head complete!!!')
+        print(f'saving head complete!!!')
+        print(f'saving head complete!!!')
+
+
+
 
 os.environ['CUDA_VISIBLE_DEVICES'] = "3"
 modelLoadDir = '/home/a286winteriscoming/'
 modelLoadDir = '/home/a286/hjs_dir1/mySCAN0/'
-# modelLoadNum = 'normalizedVerembSize512.pt'
-modelLoadNum = 'simclr_cifar-10.pth.tar'
+modelLoadName = 'normalizedVerembSize512'
+modelLoadName = 'simclr_cifar-10.pth.tar'
+headLoadNum = 100
 embedSize = 128
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Config_cifar10.py'
 clusterNum = 10
@@ -394,6 +420,8 @@ entropyWeight = 10.0
 cDim1 = 128
 trnBSize = 512
 labelNoiseRatio = 0.2
+saveRange= 100
+
 
 plotsaveName = mk_name(embedSize=embedSize,
                        clusterNum=clusterNum,
@@ -405,10 +433,19 @@ plotsaveName = mk_name(embedSize=embedSize,
 createDirectory(modelLoadDir + 'dirHeadOnlyTest1/' + plotsaveName
                 )
 
+resultSaveDir = modelLoadDir + 'dirHeadOnlyTest1/' + plotsaveName + '/'
+headSaveLoadDir = resultSaveDir+'headModels/'
+plotSaveDir = resultSaveDir
+NNSaveDir = resultSaveDir + 'NNFILE/'
+createDirectory(headSaveLoadDir)
+createDirectory(NNSaveDir)
+
 do =  doSCAN(modelSaveLoadDir=modelLoadDir,
-             modelLoadName=modelLoadNum,
-             plotSaveDir=modelLoadDir + 'dirHeadOnlyTest1/' + plotsaveName + '/',
-             NNSaveDir = modelLoadDir + 'dirHeadOnlyTest1/' + plotsaveName + '/',
+             modelLoadName=modelLoadName,
+             headSaveLoadDir=headSaveLoadDir,
+             headLoadNum=headLoadNum,
+             plotSaveDir=plotSaveDir,
+             NNSaveDir = NNSaveDir,
              embedSize = embedSize,
              cDim1=cDim1,
              labelNoiseRatio = labelNoiseRatio,
@@ -429,9 +466,12 @@ do =  doSCAN(modelSaveLoadDir=modelLoadDir,
 #              cDim1=cDim1,
 #              configPath=configPath,
 #              clusterNum=clusterNum)
+
 do.saveNearestNeighbor()
 for i in range(10000):
     do.executeTrainingHeadOnly()
+    if i % saveRange == 0:
+        do.saveHead(iteredNum=i)
 
 
 
