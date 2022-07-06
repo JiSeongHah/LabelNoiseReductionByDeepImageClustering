@@ -60,6 +60,14 @@ def load_my_model(path):
     print('lst sored is : ',sorted_model_lst)
     return sorted_model_lst
 
+def delFileOrFolders(dir,exceptionLst):
+
+    fileLst = os.listdir(dir)
+
+    for eachFile in fileLst:
+        if eachFile not in exceptionLst:
+            os.remove(dir+eachFile)
+            print(f'{dir}+{eachFile} removed')
 
 # import os
 #

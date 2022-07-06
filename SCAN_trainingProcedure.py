@@ -27,37 +27,37 @@ def scanTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, opt
     for h in range(headNum):
         entropyLossDict[f'head_{h}'] = []
 
+    with torch.set_grad_enabled(True):
+        for i, batch in enumerate(train_loader):
+            print(f'{i}/{len(train_loader)} batch training start... ')
+            # Forward pass
+            anchors = batch['anchor'].to(device)
+            neighbors = batch['neighbor'].to(device)
 
-    for i, batch in enumerate(train_loader):
-        print(f'{i}/{len(train_loader)} batch training start... ')
-        # Forward pass
-        anchors = batch['anchor'].to(device)
-        neighbors = batch['neighbor'].to(device)
+            if update_cluster_head_only:  # Only calculate gradient for backprop of linear layer
 
-        if update_cluster_head_only:  # Only calculate gradient for backprop of linear layer
+                with torch.no_grad():
+                    anchors_features = featureExtractor(anchors)
+                    neighbors_features = featureExtractor(neighbors)
+                anchors_output = ClusterHead.forward(anchors_features,inputDiff=False)
+                neighbors_output = ClusterHead.forward(neighbors_features,inputDiff=False)
 
-            with torch.no_grad():
-                anchors_features = featureExtractor(anchors)
-                neighbors_features = featureExtractor(neighbors)
-            anchors_output = ClusterHead.forward(anchors_features,inputDiff=False)
-            neighbors_output = ClusterHead.forward(neighbors_features,inputDiff=False)
+            else:  # Calculate gradient for backprop of complete network
+                anchors_output = ClusterHead.forward(featureExtractor(anchors))
+                neighbors_output = ClusterHead.forward(featureExtractor(neighbors))
 
-        else:  # Calculate gradient for backprop of complete network
-            anchors_output = ClusterHead.forward(featureExtractor(anchors))
-            neighbors_output = ClusterHead.forward(featureExtractor(neighbors))
+            totalLossInnerDict,consistencyLossInnerDict,entropyLossInnerDict = criterion(anchors_output,neighbors_output)
 
-        totalLossInnerDict,consistencyLossInnerDict,entropyLossInnerDict = criterion(anchors_output,neighbors_output)
+            totalLoss = sum(loss for loss in totalLossInnerDict.values())
+            optimizer.zero_grad()
+            totalLoss.backward()
+            optimizer.step()
 
-        totalLoss = sum(loss for loss in totalLossInnerDict.values())
-        optimizer.zero_grad()
-        totalLoss.backward()
-        optimizer.step()
-
-        for h in range(headNum):
-            totalLossDict[f'head_{h}'].append(totalLossInnerDict[f'head_{h}'].cpu().item())
-            consistencyLossDict[f'head_{h}'].append(consistencyLossInnerDict[f'head_{h}'])
-            entropyLossDict[f'head_{h}'].append(entropyLossInnerDict[f'head_{h}'])
-        print(f'{i}/{len(train_loader)} batch training complete!!! ')
+            for h in range(headNum):
+                totalLossDict[f'head_{h}'].append(totalLossInnerDict[f'head_{h}'].cpu().item())
+                consistencyLossDict[f'head_{h}'].append(consistencyLossInnerDict[f'head_{h}'])
+                entropyLossDict[f'head_{h}'].append(entropyLossInnerDict[f'head_{h}'])
+            print(f'{i}/{len(train_loader)} batch training complete!!! ')
 
     return totalLossDict, consistencyLossDict, entropyLossDict
 

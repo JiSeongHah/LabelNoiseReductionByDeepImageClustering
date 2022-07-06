@@ -137,8 +137,26 @@
 # def resnet18(**kwargs):
 #     return {'backbone': ResNet(BasicBlock, [2, 2, 2, 2], **kwargs), 'dim': 512}
 
-print('testline 20220704')
+# print('testline 20220704')
+# from scipy.stats import mode
+# import numpy as np
+#
+# x = [i for i in range(10)]
+# total=  []
+# for i in range(len(x)-1):
+#     total.append(str(x[i])+'~'+str(x[i+1]))
+#
+# print(total)
+#
 
+from save_funcs import delFileOrFolders
+
+exceptionLst = ['2500.pt','2600.pt','2700.pt','2800.pt','2900.pt']
+
+dir = '/home/a286/hjs_dir1/mySCAN0/dirHeadOnlyTest1/' \
+      'embedSize128_clusterNum10_entropyWeight5.0_labelNoiseRatio0.2_cDim1128_/headModels/'
+
+delFileOrFolders(dir,exceptionLst=exceptionLst)
 
 # dir = '/home/a286winteriscoming/Downloads/pretrainedModels/simclr_cifar-10.pth.tar'
 #
