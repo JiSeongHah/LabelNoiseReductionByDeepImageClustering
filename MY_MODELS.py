@@ -195,16 +195,16 @@ class callAnyResnet(nn.Module):
             self.backboneDim = 512
 
         if headType == 'oneLinear':
-            self.contrastive_head = nn.Linear(self.backboneDim,numClass)
+            self.contrastiveHead = nn.Linear(self.backboneDim,numClass)
         elif headType == 'mlp':
-            self.contrastive_head = nn.Sequential(nn.Linear(self.backboneDim, self.backboneDim),
+            self.contrastiveHead = nn.Sequential(nn.Linear(self.backboneDim, self.backboneDim),
                                       nn.ReLU(),
                                       nn.Linear(self.backboneDim, numClass))
 
 
     def forward(self,x):
         out = self.backbone(x)
-        out =  self.contrastive_head(out)
+        out =  self.contrastiveHead(out)
         out = F.normalize(out,dim=1)
         return out
 

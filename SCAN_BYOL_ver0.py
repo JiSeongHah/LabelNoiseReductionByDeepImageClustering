@@ -404,6 +404,8 @@ class doSCAN(nn.Module):
         self.valHeadOnly()
         self.valHeadOnlyEnd()
 
+    def trainJointly(self):
+
     def saveHead(self,iteredNum):
         torch.save(self.ClusterHead.state_dict(),self.headSaveLoadDir+str(iteredNum+self.headLoadNum)+'.pt')
         print(f'saving head complete!!!')
@@ -515,12 +517,23 @@ class doSCAN(nn.Module):
 
             accCheck[eachPredictValue] = accResult
 
-        finalConf, finalAcc = getAccPerConfLst(accCheck,10)
+        finalConf, finalAcc,finalAllocNum = getAccPerConfLst(accCheck,10,minConf=0.95)
 
-        plt.plot(finalConf,finalAcc)
+        plt.bar(finalConf,finalAcc)
         plt.xlabel('Conf Range')
         plt.ylabel('Acc')
         plt.savefig(self.plotSaveDir+'accPerConf.png',dpi=200)
+        plt.close()
+        plt.cla()
+        plt.clf()
+
+        plt.bar(finalConf, finalAllocNum)
+        plt.xlabel('Conf Range')
+        plt.ylabel('Allocated Num')
+        plt.savefig(self.plotSaveDir + 'AllocPerConf.png', dpi=200)
+        plt.close()
+        plt.cla()
+        plt.clf()
 
 
 

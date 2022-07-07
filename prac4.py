@@ -149,14 +149,27 @@
 # print(total)
 #
 
-from save_funcs import delFileOrFolders
+import torch
+from MY_MODELS import callAnyResnet
 
-exceptionLst = ['2500.pt','2600.pt','2700.pt','2800.pt','2900.pt']
+dir = '/home/a286winteriscoming/Downloads/pretrainedModels/simclr_cifar-10.pth.tar'
 
-dir = '/home/a286/hjs_dir1/mySCAN0/dirHeadOnlyTest1/' \
-      'embedSize128_clusterNum10_entropyWeight5.0_labelNoiseRatio0.2_cDim1128_/headModels/'
+loadDict = torch.load(dir,map_location='cpu')
+for i in loadDict:
+      print(i)
+model = callAnyResnet(modelType='resnet18',numClass=128)
 
-delFileOrFolders(dir,exceptionLst=exceptionLst)
+missing = model.load_state_dict(loadDict,strict=False)
+print('-------------------------------------------------------')
+
+# print(missing)
+print(set(missing[1]))
+# exceptionLst = ['2500.pt','2600.pt','2700.pt','2800.pt','2900.pt']
+#
+# dir = '/home/a286/hjs_dir1/mySCAN0/dirHeadOnlyTest1/' \
+#       'embedSize128_clusterNum10_entropyWeight5.0_labelNoiseRatio0.2_cDim1128_/headModels/'
+#
+# delFileOrFolders(dir,exceptionLst=exceptionLst)
 
 # dir = '/home/a286winteriscoming/Downloads/pretrainedModels/simclr_cifar-10.pth.tar'
 #
