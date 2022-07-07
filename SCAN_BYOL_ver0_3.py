@@ -558,7 +558,7 @@ class doSCAN(nn.Module):
 
 
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 modelLoadDir = '/home/a286winteriscoming/'
 modelLoadDir = '/home/a286/hjs_dir1/mySCAN0/'
 modelLoadName = 'normalizedVerembSize512'
@@ -572,8 +572,8 @@ cDim1 = 128
 trnBSize = 512
 labelNoiseRatio = 0.2
 saveRange= 100
-layerMethod= 'mlp'
-update_cluster_head_only = True
+layerMethod= 'linear'
+update_cluster_head_only = False
 
 plotsaveName = mk_name(embedSize=embedSize,
                        clusterNum=clusterNum,

@@ -43,8 +43,8 @@ def scanTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, opt
                 neighbors_output = ClusterHead.forward(neighbors_features,inputDiff=False)
 
             else:  # Calculate gradient for backprop of complete network
-                anchors_output = ClusterHead.forward(featureExtractor(anchors))
-                neighbors_output = ClusterHead.forward(featureExtractor(neighbors))
+                anchors_output = ClusterHead.forward(featureExtractor(anchors),inputDiff=False)
+                neighbors_output = ClusterHead.forward(featureExtractor(neighbors),inputDiff=False)
 
             totalLossInnerDict,consistencyLossInnerDict,entropyLossInnerDict = criterion(anchors_output,neighbors_output)
 

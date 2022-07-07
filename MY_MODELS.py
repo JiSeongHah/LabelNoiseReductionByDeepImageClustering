@@ -160,8 +160,10 @@ class ResNet(nn.Module):
 
 
 class callAnyResnet(nn.Module):
-    def __init__(self,modelType,numClass,headType='mlp'):
+    def __init__(self,modelType,numClass,headType='mlp',useLinLayer=False):
         super(callAnyResnet, self).__init__()
+
+        self.useLinLayer = useLinLayer
 
         if modelType == 'resnet18':
             self.backbone= ResNet(block=BasicBlock,
@@ -194,18 +196,20 @@ class callAnyResnet(nn.Module):
                                    )
             self.backboneDim = 512
 
-        if headType == 'oneLinear':
-            self.contrastiveHead = nn.Linear(self.backboneDim,numClass)
-        elif headType == 'mlp':
-            self.contrastiveHead = nn.Sequential(nn.Linear(self.backboneDim, self.backboneDim),
-                                      nn.ReLU(),
-                                      nn.Linear(self.backboneDim, numClass))
+        if useLinLayer ==True:
+            if headType == 'oneLinear':
+                self.contrastiveHead = nn.Linear(self.backboneDim,numClass)
+            elif headType == 'mlp':
+                self.contrastiveHead = nn.Sequential(nn.Linear(self.backboneDim, self.backboneDim),
+                                          nn.ReLU(),
+                                          nn.Linear(self.backboneDim, numClass))
 
 
     def forward(self,x):
         out = self.backbone(x)
-        out =  self.contrastiveHead(out)
-        out = F.normalize(out,dim=1)
+        if self.useLinLayer == True:
+            out =  self.contrastiveHead(out)
+            out = F.normalize(out,dim=1)
         return out
 
 
@@ -565,121 +569,121 @@ class MyBYOLMODEL(nn.Module):
 
         return out
 
-class myCluster4SPICE(nn.Module):
-    def __init__(self,
-                 inputDim,
-                 dim1,
-                 nClusters,
-                 lossMethod='CE'):
-        super(myCluster4SPICE, self).__init__()
-
-        self.inputDim = inputDim
-        self.dim1 = dim1
-        self.nClusters = nClusters
-
-
-        self.MLP = nn.Sequential(
-            nn.Linear(in_features=self.inputDim,out_features=self.dim1),
-            nn.ReLU(inplace=True),
-            nn.Linear(in_features=self.dim1,out_features=self.nClusters)
-        )
-
-        self.lossMethod = lossMethod
-        if self.lossMethod == 'CE':
-            self.LOSS = nn.CrossEntropyLoss()
-
-    def calEntropy(self, actions, isActionInput_prob=True):
-
-        if isActionInput_prob == True:
-            x_ = torch.clamp(actions, min=1e-8)
-            b = x_ * torch.log(x_)
-        else:
-            b = F.softmax(actions, dim=1) * F.log_softmax(actions, dim=1)
-
-        if len(b.size()) == 2:  # Sample-wise entropy
-            Entropy = b.sum(dim=1).mean()
-            return Entropy
-        elif len(b.size()) == 1:  # Distribution-wise entropy
-            Entropy = b.sum()
-            return Entropy
-        else:
-            raise ValueError('Input tensor is %d-Dimensional' % (len(b.size())))
-
-    def getLoss(self,pred,label,withEntropy=False,entropyWeight=5.0,clusteringWeight=1.0):
-
-        if withEntropy ==True:
-            totalLoss = [clusteringWeight * self.LOSS(pred,label), entropyWeight * self.calEntropy(actions=pred)]
-
-        else:
-            totalLoss = self.LOSS(pred,label)
-
-        return totalLoss
-
-    def forward(self,x):
-
-        out = F.softmax(self.MLP(x),dim=1)
-
-        return out
-
-
-class myMultiCluster4SPICE(nn.Module):
-    def __init__(self,
-                 inputDim,
-                 dim1,
-                 nClusters,
-                 numHead,
-                 lossMethod='CE'):
-        super(myMultiCluster4SPICE, self).__init__()
-
-        self.inputDim = inputDim
-        self.dim1 = dim1
-        self.nClusters = nClusters
-        self.numHead = numHead
-        self.lossMethod = lossMethod
-
-        for h in range(self.numHead):
-            headH = myCluster4SPICE(inputDim=self.inputDim,
-                                    dim1=self.dim1,
-                                    nClusters=self.nClusters,
-                                    lossMethod=self.lossMethod)
-            self.__setattr__(f'eachHead_{h}',headH)
-
-
-    def forward(self,x,inputDiff=True):
-
-        totalForwardResult = []
-
-        if inputDiff == True:
-            for h in range(self.numHead):
-                eachForwardResult = self.__getattr__(f'eachHead_{h}').forward(x[h])
-                totalForwardResult.append(eachForwardResult)
-        else:
-            for h in range(self.numHead):
-                eachForwardResult = self.__getattr__(f'eachHead_{h}').forward(x)
-                totalForwardResult.append(eachForwardResult)
-
-
-        return totalForwardResult
-
-
-
-    def getTotalLoss(self,x,label,withEntropy=False,entropyWeight=5.0,clusteringWeight=1.0):
-
-        totalLoss = {}
-
-        for h in range(self.numHead):
-            eachLossH = self.__getattr__(f'eachHead_{h}').getLoss(pred=x[h],
-                                                                  label=label[h],
-                                                                  withEntropy=withEntropy,
-                                                                  entropyWeight=entropyWeight,
-                                                                  clusteringWeight=clusteringWeight)
-            totalLoss[f'eachHead_{h}'] = eachLossH
-
-        return totalLoss
-
-    def forwardWithMinLossHead(self,inputs,headIdxWithMinLoss):
-
-        return self.__getattr__(f'eachHead_{headIdxWithMinLoss}').forward(x=inputs)
+# class myCluster4SPICE(nn.Module):
+#     def __init__(self,
+#                  inputDim,
+#                  dim1,
+#                  nClusters,
+#                  lossMethod='CE'):
+#         super(myCluster4SPICE, self).__init__()
+#
+#         self.inputDim = inputDim
+#         self.dim1 = dim1
+#         self.nClusters = nClusters
+#
+#
+#         self.MLP = nn.Sequential(
+#             nn.Linear(in_features=self.inputDim,out_features=self.dim1),
+#             nn.ReLU(inplace=True),
+#             nn.Linear(in_features=self.dim1,out_features=self.nClusters)
+#         )
+#
+#         self.lossMethod = lossMethod
+#         if self.lossMethod == 'CE':
+#             self.LOSS = nn.CrossEntropyLoss()
+#
+#     def calEntropy(self, actions, isActionInput_prob=True):
+#
+#         if isActionInput_prob == True:
+#             x_ = torch.clamp(actions, min=1e-8)
+#             b = x_ * torch.log(x_)
+#         else:
+#             b = F.softmax(actions, dim=1) * F.log_softmax(actions, dim=1)
+#
+#         if len(b.size()) == 2:  # Sample-wise entropy
+#             Entropy = b.sum(dim=1).mean()
+#             return Entropy
+#         elif len(b.size()) == 1:  # Distribution-wise entropy
+#             Entropy = b.sum()
+#             return Entropy
+#         else:
+#             raise ValueError('Input tensor is %d-Dimensional' % (len(b.size())))
+#
+#     def getLoss(self,pred,label,withEntropy=False,entropyWeight=5.0,clusteringWeight=1.0):
+#
+#         if withEntropy ==True:
+#             totalLoss = [clusteringWeight * self.LOSS(pred,label), entropyWeight * self.calEntropy(actions=pred)]
+#
+#         else:
+#             totalLoss = self.LOSS(pred,label)
+#
+#         return totalLoss
+#
+#     def forward(self,x):
+#
+#         out = F.softmax(self.MLP(x),dim=1)
+#
+#         return out
+#
+#
+# class myMultiCluster4SPICE(nn.Module):
+#     def __init__(self,
+#                  inputDim,
+#                  dim1,
+#                  nClusters,
+#                  numHead,
+#                  lossMethod='CE'):
+#         super(myMultiCluster4SPICE, self).__init__()
+#
+#         self.inputDim = inputDim
+#         self.dim1 = dim1
+#         self.nClusters = nClusters
+#         self.numHead = numHead
+#         self.lossMethod = lossMethod
+#
+#         for h in range(self.numHead):
+#             headH = myCluster4SPICE(inputDim=self.inputDim,
+#                                     dim1=self.dim1,
+#                                     nClusters=self.nClusters,
+#                                     lossMethod=self.lossMethod)
+#             self.__setattr__(f'eachHead_{h}',headH)
+#
+#
+#     def forward(self,x,inputDiff=True):
+#
+#         totalForwardResult = []
+#
+#         if inputDiff == True:
+#             for h in range(self.numHead):
+#                 eachForwardResult = self.__getattr__(f'eachHead_{h}').forward(x[h])
+#                 totalForwardResult.append(eachForwardResult)
+#         else:
+#             for h in range(self.numHead):
+#                 eachForwardResult = self.__getattr__(f'eachHead_{h}').forward(x)
+#                 totalForwardResult.append(eachForwardResult)
+#
+#
+#         return totalForwardResult
+#
+#
+#
+#     def getTotalLoss(self,x,label,withEntropy=False,entropyWeight=5.0,clusteringWeight=1.0):
+#
+#         totalLoss = {}
+#
+#         for h in range(self.numHead):
+#             eachLossH = self.__getattr__(f'eachHead_{h}').getLoss(pred=x[h],
+#                                                                   label=label[h],
+#                                                                   withEntropy=withEntropy,
+#                                                                   entropyWeight=entropyWeight,
+#                                                                   clusteringWeight=clusteringWeight)
+#             totalLoss[f'eachHead_{h}'] = eachLossH
+#
+#         return totalLoss
+#
+#     def forwardWithMinLossHead(self,inputs,headIdxWithMinLoss):
+#
+#         return self.__getattr__(f'eachHead_{headIdxWithMinLoss}').forward(x=inputs)
 
 
 class myCluster4SCAN(nn.Module):
@@ -687,19 +691,25 @@ class myCluster4SCAN(nn.Module):
                  inputDim,
                  dim1,
                  nClusters,
-                 lossMethod='CE'):
-        super(myCluster4ScAN, self).__init__()
+                 lossMethod='CE',
+                 layerMethod='linear'):
+        super(myCluster4SCAN, self).__init__()
 
         self.inputDim = inputDim
         self.dim1 = dim1
         self.nClusters = nClusters
+        self.layerMethod= layerMethod
 
-
-        self.MLP = nn.Sequential(
-            nn.Linear(in_features=self.inputDim,out_features=self.dim1),
-            nn.ReLU(inplace=True),
-            nn.Linear(in_features=self.dim1,out_features=self.nClusters)
-        )
+        if self.layerMethod == 'linear':
+            self.MLP = nn.Sequential(
+                nn.Linear(in_features=self.inputDim,out_features=self.nClusters)
+            )
+        if self.layerMethod == 'mlp':
+            self.MLP = nn.Sequential(
+                nn.Linear(in_features=self.inputDim, out_features=self.dim1),
+                nn.ReLU(inplace=True),
+                nn.Linear(in_features=self.dim1, out_features=self.nClusters)
+            )
 
         self.lossMethod = lossMethod
         if self.lossMethod == 'CE':
@@ -745,7 +755,8 @@ class myMultiCluster4SCAN(nn.Module):
                  dim1,
                  nClusters,
                  numHead,
-                 lossMethod='CE'):
+                 lossMethod='CE',
+                 layerMethod='linear'):
         super(myMultiCluster4SCAN, self).__init__()
 
         self.inputDim = inputDim
@@ -753,12 +764,14 @@ class myMultiCluster4SCAN(nn.Module):
         self.nClusters = nClusters
         self.numHead = numHead
         self.lossMethod = lossMethod
+        self.layerMethod = layerMethod
 
         for h in range(self.numHead):
-            headH = myCluster4SPICE(inputDim=self.inputDim,
+            headH = myCluster4SCAN(inputDim=self.inputDim,
                                     dim1=self.dim1,
                                     nClusters=self.nClusters,
-                                    lossMethod=self.lossMethod)
+                                    lossMethod=self.lossMethod,
+                                    layerMethod=self.layerMethod)
             self.__setattr__(f'eachHead_{h}',headH)
 
 
