@@ -160,10 +160,11 @@ class ResNet(nn.Module):
 
 
 class callAnyResnet(nn.Module):
-    def __init__(self,modelType,numClass,headType='mlp',useLinLayer=False):
+    def __init__(self,modelType,numClass,headType='mlp',useLinLayer=False,normalizing=True):
         super(callAnyResnet, self).__init__()
 
         self.useLinLayer = useLinLayer
+        self.normalizing = normalizing
 
         if modelType == 'resnet18':
             self.backbone= ResNet(block=BasicBlock,
@@ -206,7 +207,10 @@ class callAnyResnet(nn.Module):
 
 
     def forward(self,x):
-        out = self.backbone(x)
+        if self.normalizing:
+            out = F.normalize(self.backbone(x),dim=1)
+        else:
+            out = self.backbone(x)
         if self.useLinLayer == True:
             out =  self.contrastiveHead(out)
             out = F.normalize(out,dim=1)
@@ -802,7 +806,7 @@ class myMultiCluster4SCAN(nn.Module):
                                                                   entropyWeight=entropyWeight,
                                                                   clusteringWeight=clusteringWeight)
             totalLoss[f'eachHead_{h}'] = eachLossH
-
+        print(f'total loss is : {totalLoss}')
         return totalLoss
 
     def forwardWithMinLossHead(self,inputs,headIdxWithMinLoss):

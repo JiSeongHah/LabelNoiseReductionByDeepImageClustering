@@ -12,7 +12,8 @@ def scanTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, opt
     else:
         featureExtractor.train()  # Update BN
 
-    optimizer.zero_grad()
+    optimizer[0].zero_grad()
+    optimizer[1].zero_grad()
     # gradientStep = len(train_loader)
 
     totalLossDict = dict()
@@ -49,9 +50,13 @@ def scanTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, opt
             totalLossInnerDict,consistencyLossInnerDict,entropyLossInnerDict = criterion(anchors_output,neighbors_output)
 
             totalLoss = sum(loss for loss in totalLossInnerDict.values())
-            optimizer.zero_grad()
+            if update_cluster_head_only!=False:
+                optimizer[0].zero_grad()
+            optimizer[1].zero_grad()
             totalLoss.backward()
-            optimizer.step()
+            if update_cluster_head_only != False:
+                optimizer[0].step()
+            optimizer[1].step()
 
             for h in range(headNum):
                 totalLossDict[f'head_{h}'].append(totalLossInnerDict[f'head_{h}'].cpu().item())
