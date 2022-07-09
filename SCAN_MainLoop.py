@@ -225,8 +225,14 @@ class doSCAN(nn.Module):
         self.headOnlyTotalLossLstAvg = []
         self.clusterOnlyAccLst = []
 
+        self.jointTrainingLossLst = []
+        self.jointTrainingLossLstAvg = []
+        self.jointTrainingAccLst = []
+
         self.minHeadIdx = 0
         self.minHeadIdxLst = []
+        self.minHeadIdxJointTraining = 0
+        self.minHeadIdxLstJointTraining = []
 
         self.clusterOnlyClusteringLossDictPerHead = dict()
         for h in range(self.numHeads):
@@ -239,6 +245,10 @@ class doSCAN(nn.Module):
         self.clusterOnlyTotalLossDictPerHead = dict()
         for h in range(self.numHeads):
             self.clusterOnlyTotalLossDictPerHead[f'head_{h}'] = []
+
+        self.jointTrainingLossDictPerHead = dict()
+        for h in range(self.numHeads):
+            self.jointTrainingLossDictPerHead[f'head_{h}'] = []
 
         self.FeatureExtractorBYOL.to(self.device)
         self.ClusterHead.to(self.device)
@@ -410,11 +420,7 @@ class doSCAN(nn.Module):
         self.headOnlyConsisLossLstAvg.append(np.mean(self.clusterOnlyClusteringLossDictPerHead[f'head_{self.minHeadIdx}']))
         self.headOnlyEntropyLossLstAvg.append(
             np.mean(self.clusterOnlyEntropyLossDictPerHead[f'head_{self.minHeadIdx}']))
-        self.headOnlyConsisLossLst.clear()
-        self.headOnlyEntropyLossLst.clear()
 
-        # for i in self.headOnlyEntropyLossLstAvg:
-        #     print('entropy loss for each epoch is : ', i)
 
         for h in range(self.numHeads):
             self.clusterOnlyTotalLossDictPerHead[f'head_{h}'] = []
@@ -466,30 +472,165 @@ class doSCAN(nn.Module):
                                                             'augment':self.scanTransform},
                                                  toAgumentedDataset=True)
 
-
         trainDataloader = DataLoader(trainDataset,shuffle=True,batch_size=self.trnBSize,num_workers=2)
+
         self.ClusterHead.train()
         for iter in range(iterNum):
             print(f'{iter}/{iterNum} training Start...')
-            totalLossDict,\
-            consistencyLossDict,\
-            entropLossDict = scanTrain(train_loader= trainDataloader,
-                                       featureExtractor = self.FeatureExtractorBYOL,
-                                       headNum=self.numHeads,
-                                       ClusterHead=self.ClusterHead,
-                                       criterion=SCANLoss(entropyWeight=self.entropyWeight),
-                                       optimizer=[self.optimizerBackbone,self.optimizerCHead],
-                                       device=self.device,
-                                       update_cluster_head_only=self.update_cluster_head_only)
+            totalLossDict = scanTrain(train_loader= trainDataloader,
+                                      featureExtractor = self.FeatureExtractorBYOL,
+                                      headNum=self.numHeads,
+                                      ClusterHead=self.ClusterHead,
+                                      criterion=SCANLoss(entropyWeight=self.entropyWeight),
+                                      optimizer=[self.optimizerBackbone,self.optimizerCHead],
+                                      device=self.device,
+                                      update_cluster_head_only=self.update_cluster_head_only)
+
 
             for h in range(self.numHeads):
-                self.clusterOnlyTotalLossDictPerHead[f'head_{h}'].append(np.mean(totalLossDict[f'head_{h}']))
-                self.clusterOnlyClusteringLossDictPerHead[f'head_{h}'].append(np.mean(consistencyLossDict[f'head_{h}']))
-                self.clusterOnlyEntropyLossDictPerHead[f'head_{h}'].append(np.mean(entropLossDict[f'head_{h}']))
+                self.jointTrainingLossDictPerHead[f'head_{h}'].append(np.mean(totalLossDict[f'head_{h}']))
+
             print(f'{iter}/{iterNum} training Complete !!!')
 
         self.ClusterHead.eval()
 
+    def jointVal(self):
+        self.FeatureExtractorBYOL.eval()
+        self.ClusterHead.eval()
+
+        lst4CheckMinLoss = []
+        for h in range(self.numHeads):
+            lst4CheckMinLoss.append(np.mean(self.jointTrainingLossDictPerHead[f'head_{h}']))
+        print(f'flushing cluster Loss lst complete')
+
+        self.minHeadIdxJointTraining = np.argmin(lst4CheckMinLoss)
+        self.minHeadIdxLstJointTraining.append(self.minHeadIdxJointTraining)
+        trainDataset = getCustomizedDataset4SCAN(downDir=self.downDir,
+                                                 dataType=self.dataType,
+                                                 transform=self.baseTransform,
+                                                 baseVer=True)
+
+        TDataLoader = tqdm(DataLoader(trainDataset, shuffle=True, batch_size=self.trnBSize, num_workers=2))
+
+        clusterPredResult = []
+        gtLabelResult = []
+        # predict cluster for each inputs
+        with torch.set_grad_enabled(False):
+            for idx, loadedBatch in enumerate(TDataLoader):
+                inputsRaw = loadedBatch['image'].float()
+                embededInput = self.FeatureExtractorBYOL(inputsRaw.to(self.device))
+
+                clusterProb = self.ClusterHead.forwardWithMinLossHead(embededInput,
+                                                                      headIdxWithMinLoss=self.minHeadIdxJointTraining)
+                clusterPred = torch.argmax(clusterProb, dim=1).cpu()
+                # print(f'clusterPred hase unique ele : {torch.unique(clusterPred)}')
+                clusterPredResult.append(clusterPred)
+                gtLabelResult.append(loadedBatch['label'])
+
+        # result of prediction for each inputs
+        clusterPredResult = torch.cat(clusterPredResult)
+        for eachClusterUnique in torch.unique(clusterPredResult):
+            print(
+                f' {torch.count_nonzero(clusterPredResult == eachClusterUnique)} allocated for cluster :{eachClusterUnique}'
+                f'when validating')
+
+        # ground truth label for each inputs
+        gtLabelResult = torch.cat(gtLabelResult).unsqueeze(1)
+        print(f'size of gtLabelResult is : {gtLabelResult.size()}')
+        # print(f'clusterPred has size : {clusterPredResult.size()} , gtLabelResult has size : {gtLabelResult.size()}')
+
+        ################################# make noised label with ratio ###############################
+        ################################# make noised label with ratio ###############################
+        minGtLabel = torch.min(torch.unique(gtLabelResult))
+        maxGtLabel = torch.max(torch.unique(gtLabelResult))
+
+        # noisedLabels : var for total labels with noised label
+        noisedLabels = []
+        # noisedLabels4AccCheck : var for checking accruacy of head, contains noised label only
+        noisedLabels4AccCheck = []
+        # noiseInserTerm : for this term, noised label is inserted into total labels
+        noiseInsertTerm = int(1 / self.labelNoiseRatio)
+        print(f'noiseInserTerm is : {noiseInsertTerm}')
+        for idx, (eachClusterPred, eachGtLabel) in enumerate(zip(clusterPredResult, gtLabelResult)):
+            if idx % noiseInsertTerm == 0:
+                noisedLabels.append(torch.randint(minGtLabel.cpu(),
+                                                  maxGtLabel + 1, (1,)))
+                noisedLabels4AccCheck.append([eachClusterPred.cpu(),
+                                              eachGtLabel.cpu(),
+                                              torch.randint(minGtLabel, maxGtLabel + 1, (1,))])
+            else:
+                noisedLabels.append(eachGtLabel)
+        noisedLabels = torch.cat(noisedLabels)
+        print(f'len of noisedLabels4AccCheck is : {len(noisedLabels4AccCheck)}')
+        ################################# make noised label with ratio ###############################
+        ################################# make noised label with ratio ###############################
+
+        # dict containing which labels is mode in each cluster
+        modelLabelPerCluster = dict()
+        for eachCluster in range(self.clusterNum):
+            sameClusterIdx = clusterPredResult == eachCluster
+            # print(torch.sum(sameClusterIdx.float()))
+            try:
+                modeLabel = torch.mode(noisedLabels[sameClusterIdx]).values
+            except:
+                modeLabel = torch.tensor([])
+            modelLabelPerCluster[eachCluster] = modeLabel
+            # print(eachCluster,modelLabelPerCluster[eachCluster])
+
+        accCheck = []
+        for eachCheckElement in noisedLabels4AccCheck:
+            eachPredictedLabel = eachCheckElement[0].item()
+            eachGroundTruthLabel = eachCheckElement[1]
+
+            if modelLabelPerCluster[eachPredictedLabel] == eachGroundTruthLabel:
+                accCheck.append(1)
+            else:
+                accCheck.append(0)
+
+        print(f'len of accCheck is : {len(accCheck)}')
+        self.jointTrainingAccLst.append(np.mean(accCheck))
+        print(f'validation step end with accuracy : {np.mean(accCheck)}, total OK is : {np.sum(accCheck)} and '
+              f'not OK is : {np.sum(np.array(accCheck) == 0)} with '
+              f'length of data : {len(accCheck)}')
+
+    def jointValEnd(self):
+
+        self.jointTrainingLossLstAvg.append(
+            np.mean(self.jointTrainingLossDictPerHead[f'head_{self.minHeadIdxJointTraining}']))
+
+        for h in range(self.numHeads):
+            self.jointTrainingLossDictPerHead[f'head_{h}'] = []
+
+        fig = plt.figure(constrained_layout=True)
+
+        ax1 = fig.add_subplot(1, 2, 1)
+        ax1.plot(range(len(self.jointTrainingLossLstAvg)), self.jointTrainingLossLstAvg)
+        ax1.set_xlabel('epoch')
+        ax1.set_ylabel('self labeling loss')
+        # ax1.set_title('Head Only Train Loss clustering')
+
+        ax2 = fig.add_subplot(1, 2, 2)
+        ax2.plot(range(len(self.jointTrainingAccLst)), self.jointTrainingAccLst)
+        ax2.set_xlabel('epoch')
+        ax2.set_ylabel('self labeling acc')
+        # ax3.set_title(f'val acc , noise ratio : {self.labelNoiseRatio}')
+
+        plt.savefig(self.plotSaveDir + 'selfLabelingResult.png', dpi=200)
+        print('saving self labeling plot complete !')
+        plt.close()
+        plt.clf()
+        plt.cla()
+
+        with open(self.plotSaveDir + 'minLossHeadIdxJointTraining.pkl', 'wb') as F:
+            pickle.dump(self.minHeadIdxLstJointTraining, F)
+        print('saving head idx of having minimum loss lst complete')
+
+    def executeJointTraining(self,iterNum=1):
+        # time.sleep(10)
+        self.trainJointly(iterNum=iterNum)
+        print('training done')
+        self.jointVal()
+        self.jointValEnd()
 
     def saveHead(self,iteredNum):
         torch.save(self.ClusterHead.state_dict(),self.headSaveLoadDir+str(iteredNum+self.headLoadNum)+'.pt')
@@ -626,4 +767,8 @@ class doSCAN(nn.Module):
         plt.close()
         plt.cla()
         plt.clf()
+
+    def trainWithFilteredData(self):
+
+
 
