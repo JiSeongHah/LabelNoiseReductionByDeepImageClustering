@@ -769,6 +769,7 @@ class doSCAN(nn.Module):
         plt.clf()
 
     def trainWithFilteredData(self):
+        pass
 
 
 
