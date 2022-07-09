@@ -1,9 +1,7 @@
-from SCAN_CONFIG import Config
 
-configPath = './SCAN_Configs.py'
+ds = {}
 
-dataCfg = Config.fromfile(configPath)
-cfgScan = dataCfg.dataConfigs_Cifar10
-# baseTransform = dataCfg.dataConfigs_Cifar10.baseTransform
+for i in range(10):
+    ds[i] = i
 
-print(cfgScan)
+print(sum(loss for loss in ds.values()))

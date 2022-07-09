@@ -29,7 +29,7 @@ import pickle
 from SCAN_Transformation import get_train_transformations
 from torch.utils.data import TensorDataset
 from SCAN_CONFIG import Config
-from SCAN_DATASET_CIFAR10 import getCustomizedDataset4SCAN,Cifar104SCAN
+from SCAN_DATASETS import getCustomizedDataset4SCAN
 from SCAN_trainingProcedure import scanTrain
 from SCAN_losses import SCANLoss
 from SCAN_usefulUtils import getMinHeadIdx,getAccPerConfLst
@@ -50,6 +50,7 @@ class doSCAN(nn.Module):
                  configPath,
                  clusterNum,
                  normalizing,
+                 useLinLayer,
                  update_cluster_head_only=False,
                  layerMethod='linear',
                  nnNum=20,
@@ -79,10 +80,13 @@ class doSCAN(nn.Module):
         self.basemodelSaveLoadDir = basemodelSaveLoadDir
         if basemodelLoadName == 'cifar10':
             self.basemodelLoadName = 'simclr_cifar-10.pth.tar'
+            self.dataType= basemodelLoadName
         if basemodelLoadName == 'cifar100':
             self.basemodelLoadName = 'simclr_cifar-20.pth.tar'
+            self.dataType = basemodelLoadName
         if basemodelLoadName == 'stl10':
             self.basemodelLoadName = 'simclr_stl-10.pth.tar'
+            self.dataType = basemodelLoadName
 
         self.headSaveLoadDir = headSaveLoadDir
         self.FESaveLoadDir = FESaveLoadDir
@@ -94,6 +98,7 @@ class doSCAN(nn.Module):
         self.NNSaveDir = NNSaveDir
         self.embedSize = embedSize
         self.normalizing = normalizing
+        self.useLinLayer = useLinLayer
 
         self.modelType = modelType
         self.L2NormalEnd = L2NormalEnd
@@ -145,28 +150,29 @@ class doSCAN(nn.Module):
 
         self.FeatureExtractorBYOL = callAnyResnet(modelType=self.modelType,
                                                   numClass=self.embedSize,
-                                                  normalizing=self.normalizing
+                                                  normalizing=self.normalizing,
+                                                  useLinLayer=self.useLinLayer
                                                   )
 
         try:
             print(f'loading {self.FESaveLoadDir} {self.FELoadNum}')
             modelStateDict = torch.load(self.FESaveLoadDir + self.FELoadNum+'.pt')
             missing = self.FeatureExtractorBYOL.load_state_dict(modelStateDict, strict=False)
-            assert (set(missing[1]) == {
-                'contrastive_head.0.weight', 'contrastive_head.0.bias',
-                'contrastive_head.2.weight', 'contrastive_head.2.bias'}
-                    or set(missing[1]) == {
-                        'contrastive_head.weight', 'contrastive_head.bias'})
+            # assert (set(missing[1]) == {
+            #     'contrastive_head.0.weight', 'contrastive_head.0.bias',
+            #     'contrastive_head.2.weight', 'contrastive_head.2.bias'}
+            #         or set(missing[1]) == {
+            #             'contrastive_head.weight', 'contrastive_head.bias'})
             print(f'loading {self.FESaveLoadDir}{self.FELoadNum} complete successfully!~!')
         except:
             print(f'loading base model..')
             modelStateDict = torch.load(self.basemodelSaveLoadDir + self.basemodelLoadName)
             missing = self.FeatureExtractorBYOL.load_state_dict(modelStateDict,strict=False)
-            assert (set(missing[1]) == {
-                'contrastive_head.0.weight', 'contrastive_head.0.bias',
-                'contrastive_head.2.weight', 'contrastive_head.2.bias'}
-                    or set(missing[1]) == {
-                        'contrastive_head.weight', 'contrastive_head.bias'})
+            # assert (set(missing[1]) == {
+            #     'contrastive_head.0.weight', 'contrastive_head.0.bias',
+            #     'contrastive_head.2.weight', 'contrastive_head.2.bias'}
+            #         or set(missing[1]) == {
+            #             'contrastive_head.weight', 'contrastive_head.bias'})
             print('loading base model complete!')
             self.FELoadNum = 0
 
@@ -239,7 +245,7 @@ class doSCAN(nn.Module):
 
     def saveNearestNeighbor(self):
 
-        dataset4kNN = getCustomizedDataset4SCAN(downDir=self.downDir,transform=self.baseTransform,baseVer=True)
+        dataset4kNN = getCustomizedDataset4SCAN(downDir=self.downDir,dataType=self.dataType,transform=self.baseTransform,baseVer=True)
         dataloader4kNN = DataLoader(dataset4kNN,batch_size=512,shuffle=False,num_workers=2)
 
         totalFeatures = []
@@ -267,6 +273,7 @@ class doSCAN(nn.Module):
 
         indices = np.load(self.NNSaveDir+'NNs.npy')
         trainDataset = getCustomizedDataset4SCAN(downDir=self.downDir,
+                                                 dataType=self.dataType,
                                                  transform=self.scanTransform,
                                                  nnNum= self.nnNum,
                                                  indices=indices,
@@ -309,6 +316,7 @@ class doSCAN(nn.Module):
         self.minHeadIdx = np.argmin(lst4CheckMinLoss)
         self.minHeadIdxLst.append(self.minHeadIdx)
         trainDataset = getCustomizedDataset4SCAN(downDir=self.downDir,
+                                                 dataType=self.dataType,
                                                  transform=self.baseTransform,
                                                  baseVer=True)
 
@@ -447,12 +455,41 @@ class doSCAN(nn.Module):
         # time.sleep(10)
         self.trainHeadOnly(iterNum=iterNum)
         print('training done')
-        # time.sleep(10)
         self.valHeadOnly()
         self.valHeadOnlyEnd()
 
     def trainJointly(self):
-        pass
+
+        trainDataset = getCustomizedDataset4SCAN(downDir=self.downDir,
+                                                 dataType=self.dataType,
+                                                 transform={'standard':self.baseTransform,
+                                                            'augment':self.scanTransform},
+                                                 toAgumentedDataset=True)
+
+
+        trainDataloader = DataLoader(trainDataset,shuffle=True,batch_size=self.trnBSize,num_workers=2)
+        self.ClusterHead.train()
+        for iter in range(iterNum):
+            print(f'{iter}/{iterNum} training Start...')
+            totalLossDict,\
+            consistencyLossDict,\
+            entropLossDict = scanTrain(train_loader= trainDataloader,
+                                       featureExtractor = self.FeatureExtractorBYOL,
+                                       headNum=self.numHeads,
+                                       ClusterHead=self.ClusterHead,
+                                       criterion=SCANLoss(entropyWeight=self.entropyWeight),
+                                       optimizer=[self.optimizerBackbone,self.optimizerCHead],
+                                       device=self.device,
+                                       update_cluster_head_only=self.update_cluster_head_only)
+
+            for h in range(self.numHeads):
+                self.clusterOnlyTotalLossDictPerHead[f'head_{h}'].append(np.mean(totalLossDict[f'head_{h}']))
+                self.clusterOnlyClusteringLossDictPerHead[f'head_{h}'].append(np.mean(consistencyLossDict[f'head_{h}']))
+                self.clusterOnlyEntropyLossDictPerHead[f'head_{h}'].append(np.mean(entropLossDict[f'head_{h}']))
+            print(f'{iter}/{iterNum} training Complete !!!')
+
+        self.ClusterHead.eval()
+
 
     def saveHead(self,iteredNum):
         torch.save(self.ClusterHead.state_dict(),self.headSaveLoadDir+str(iteredNum+self.headLoadNum)+'.pt')
@@ -475,6 +512,7 @@ class doSCAN(nn.Module):
         self.minHeadIdx = getMinHeadIdx(self.plotSaveDir)
         print(f'self.minHeadIdx is : {self.minHeadIdx}')
         trainDataset = getCustomizedDataset4SCAN(downDir=self.downDir,
+                                                 dataType=self.dataType,
                                                  transform=self.baseTransform,
                                                  baseVer=True)
         TDataLoader = tqdm(DataLoader(trainDataset,shuffle=True,batch_size=self.trnBSize,num_workers=2))

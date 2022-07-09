@@ -50,13 +50,18 @@ def scanTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, opt
             totalLossInnerDict,consistencyLossInnerDict,entropyLossInnerDict = criterion(anchors_output,neighbors_output)
 
             totalLoss = sum(loss for loss in totalLossInnerDict.values())
-            if update_cluster_head_only!=False:
+            if update_cluster_head_only:
+                optimizer[1].zero_grad()
+            else:
                 optimizer[0].zero_grad()
-            optimizer[1].zero_grad()
+                optimizer[1].zero_grad()
+
             totalLoss.backward()
-            if update_cluster_head_only != False:
+            if update_cluster_head_only:
+                optimizer[1].step()
+            else:
                 optimizer[0].step()
-            optimizer[1].step()
+                optimizer[1].step()
 
             for h in range(headNum):
                 totalLossDict[f'head_{h}'].append(totalLossInnerDict[f'head_{h}'].cpu().item())
@@ -66,31 +71,62 @@ def scanTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, opt
 
     return totalLossDict, consistencyLossDict, entropyLossDict
 
-def selflabelTrain(train_loader, model, criterion, optimizer, epoch, ema=None):
-    """
-    Self-labeling based on confident samples
-    """
-    losses = AverageMeter('Loss', ':.4e')
-    progress = ProgressMeter(len(train_loader), [losses],
-                             prefix="Epoch: [{}]".format(epoch))
-    model.train()
+def selflabelTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, optimizer, device, update_cluster_head_only=True):
 
-    for i, batch in enumerate(train_loader):
-        images = batch['image'].cuda(non_blocking=True)
-        images_augmented = batch['image_augmented'].cuda(non_blocking=True)
+    if update_cluster_head_only:
+        featureExtractor.eval()  # No need to update BN
+    else:
+        featureExtractor.train()  # Update BN
 
-        with torch.no_grad():
-            output = model(images)[0]
-        output_augmented = model(images_augmented)[0]
+    optimizer[0].zero_grad()
+    optimizer[1].zero_grad()
+    # gradientStep = len(train_loader)
 
-        loss = criterion(output, output_augmented)
-        losses.update(loss.item())
+    totalLossDict = dict()
+    for h in range(headNum):
+        totalLossDict[f'head_{h}'] = []
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    totalLossDict4Plot = dict()
+    for h in range(headNum):
+        totalLossDict4Plot[f'head_{h}'] = []
 
-        if ema is not None:  # Apply EMA to update the weights of the network
-            ema.update_params(model)
-            ema.apply_shadow(model)
+    with torch.set_grad_enabled(True):
+        for i, batch in enumerate(train_loader):
+            images = batch['image'].to(device)
+            AugedImage = batch['AugedImage'].to(device)
 
+            if update_cluster_head_only:
+                with torch.no_grad():
+                    embed = featureExtractor(images)
+                    augedEmbed = featureExtractor(AugedImage)
+
+                with torch.no_grad():
+                    output = ClusterHead.forward(embed,inputDiff=False).cpu()
+                AugedOutput = ClusterHead.forward(augedEmbed,inputDiff=False).cpu()
+            else:
+                with torch.no_grad():
+                    output = ClusterHead.forward(featureExtractor(images),inpudDiff=False).cpu()
+                AugedOutput = ClusterHead.forward(featureExtractor(AugedImage),inputDiff=False).cpu()
+
+            for h in range(headNum):
+                loss = criterion(output, AugedOutput)
+                totalLossDict[f'head_{h}'].append(loss)
+
+            finalLoss = sum(loss for loss in totalLossDict.values())
+            if update_cluster_head_only:
+                optimizer[1].zero_grad()
+            else:
+                optimizer[0].zero_grad()
+                optimizer[1].zero_grad()
+
+            loss.backward()
+            if update_cluster_head_only:
+                optimizer[1].step()
+            else:
+                optimizer[0].step()
+                optimizer[1].step()
+
+    for h in range(headNum):
+        totalLossDict4Plot[f'head_{h}'].append(sum(totalLossDict[f'head_{h}']).cpu().item())
+
+    return totalLossDict4Plot

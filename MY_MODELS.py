@@ -199,9 +199,9 @@ class callAnyResnet(nn.Module):
 
         if useLinLayer ==True:
             if headType == 'oneLinear':
-                self.contrastiveHead = nn.Linear(self.backboneDim,numClass)
+                self.contrastive_head = nn.Linear(self.backboneDim,numClass)
             elif headType == 'mlp':
-                self.contrastiveHead = nn.Sequential(nn.Linear(self.backboneDim, self.backboneDim),
+                self.contrastive_head = nn.Sequential(nn.Linear(self.backboneDim, self.backboneDim),
                                           nn.ReLU(),
                                           nn.Linear(self.backboneDim, numClass))
 
@@ -212,7 +212,7 @@ class callAnyResnet(nn.Module):
         else:
             out = self.backbone(x)
         if self.useLinLayer == True:
-            out =  self.contrastiveHead(out)
+            out =  self.contrastive_head(out)
             out = F.normalize(out,dim=1)
         return out
 

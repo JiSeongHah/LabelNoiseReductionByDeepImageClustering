@@ -29,7 +29,7 @@ import pickle
 from SCAN_Transformation import get_train_transformations
 from torch.utils.data import TensorDataset
 from SCAN_CONFIG import Config
-from SCAN_DATASET_CIFAR10 import getCustomizedDataset4SCAN,Cifar104SCAN
+from SCAN_DATASETS import getCustomizedDataset4SCAN
 from SCAN_trainingProcedure import scanTrain
 from SCAN_losses import SCANLoss
 from SCAN_usefulUtils import getMinHeadIdx,getAccPerConfLst
@@ -47,7 +47,7 @@ configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
 basemodelLoadName = 'cifar10'
 headLoadNum = 0
 FELoadNum = 0
-embedSize = 512
+embedSize = 128
 clusterNum = 10
 numHeads = 1
 entropyWeight = 5.0
@@ -55,10 +55,11 @@ cDim1 = 512
 trnBSize = 128
 labelNoiseRatio = 0.2
 saveRange= 100
-layerMethod= 'mlp'
-update_cluster_head_only = True
+layerMethod= 'linear'
+update_cluster_head_only = False
 updateNNTerm = 10
 normalizing = False
+useLinLayer = True
 
 plotsaveName = mk_name(embedSize=embedSize,
                        numHeads = numHeads,
@@ -68,11 +69,12 @@ plotsaveName = mk_name(embedSize=embedSize,
                        cDim1=cDim1,
                        layerMethod=layerMethod,
                        headOnly = update_cluster_head_only,
-                       normalizing=normalizing
+                       normalizing=normalizing,
+                       useLinLayer = useLinLayer
                        )
 
-createDirectory(baseDir + 'dirResult1/' + plotsaveName)
-resultSaveDir = baseDir + 'dirResult1/' + plotsaveName + '/'
+createDirectory(baseDir + 'dirResult2/' + plotsaveName)
+resultSaveDir = baseDir + 'dirResult2/' + plotsaveName + '/'
 
 headSaveLoadDir = resultSaveDir+'headModels/'
 FESaveLoadDir = resultSaveDir+'FEModels/'
@@ -93,6 +95,7 @@ do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
              NNSaveDir = NNSaveDir,
              embedSize = embedSize,
              normalizing=normalizing,
+             useLinLayer=useLinLayer,
              cDim1=cDim1,
              numHeads = numHeads,
              layerMethod=layerMethod,
