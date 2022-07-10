@@ -11,6 +11,7 @@ class MaskedCELoss(nn.Module):
     def forward(self, input, label, mask, weight, reduction='mean'):
         if not (mask != 0).any():
             raise ValueError('Mask in MaskedCrossEntropyLoss is all zeros.')
+
         label = torch.masked_select(label, mask)
         b, c = input.size()
         n = label.size(0)
@@ -19,12 +20,13 @@ class MaskedCELoss(nn.Module):
 
 
 class ConfidenceBasedCE(nn.Module):
-    def __init__(self, threshold, weight4CE=True):
+    def __init__(self, threshold,isInputProb, weight4CE=True):
         super(ConfidenceBasedCE, self).__init__()
         self.loss = MaskedCELoss()
         self.softmax = nn.Softmax(dim=1)
         self.threshold = threshold
         self.weight4CE = weight4CE
+        self.isInputProb = isInputProb
 
     def forward(self, anchorsAugWeak, anchorsAugStrong):
         """
@@ -33,9 +35,14 @@ class ConfidenceBasedCE(nn.Module):
         output: cross entropy
         """
         # Retrieve target and mask based on weakly augmentated anchors
-        weakAnchorsProb = self.softmax(anchorsAugWeak)
+        if self.isInputProb == False:
+            weakAnchorsProb = self.softmax(anchorsAugWeak)
+        else:
+            weakAnchorsProb = anchorsAugWeak
         maxProbs, targetIndices = torch.max(weakAnchorsProb, dim=1)
+        # print(f'minProb is : {torch.min(maxProbs)} and maxProbi s : {torch.max(maxProbs)}')
         mask = maxProbs > self.threshold
+        # print(torch.sum(mask.float()))
         b, c = weakAnchorsProb.size()
         targetIndicesMasked = torch.masked_select(targetIndices, mask.squeeze())
         n = targetIndicesMasked.size(0)
@@ -54,7 +61,7 @@ class ConfidenceBasedCE(nn.Module):
             weight = None
 
         # Loss
-        loss = self.loss(input_, targetIndicesMasked, mask, weight=weight, reduction='mean')
+        loss = self.loss(input_, targetIndices, mask, weight=weight, reduction='mean')
 
         return loss
 
@@ -70,6 +77,7 @@ def entropy(x, input_as_probabilities=True):
         x_ = torch.clamp(x, min=1e-8)
         b = x_ * torch.log(x_)
     else:
+        print(f'x size size : {x.size()}')
         b = F.softmax(x, dim=1) * F.log_softmax(x, dim=1)
 
     if len(b.size()) == 2:  # Sample-wise entropy
@@ -81,11 +89,12 @@ def entropy(x, input_as_probabilities=True):
 
 
 class SCANLoss(nn.Module):
-    def __init__(self, entropyWeight=2.0):
+    def __init__(self, isInputProb,entropyWeight=2.0):
         super(SCANLoss, self).__init__()
         self.softmax = nn.Softmax(dim=1)
         self.bce = nn.BCELoss()
         self.entropyWeight = entropyWeight  # Default = 2.0
+        self.isInputProb = isInputProb
 
     def forward(self, anchors, neighbors):
         """
@@ -104,8 +113,12 @@ class SCANLoss(nn.Module):
         entropyLossDict = dict()
 
         for h in range(headNum):
-            anchorsProbPerHead = self.softmax(anchors[f'eachHead_{h}'])
-            positivesProbPerHead = self.softmax(neighbors[f'eachHead_{h}'])
+            if self.isInputProb == False:
+                anchorsProbPerHead = self.softmax(anchors[f'eachHead_{h}'])
+                positivesProbPerHead = self.softmax(neighbors[f'eachHead_{h}'])
+            else:
+                anchorsProbPerHead = anchors[f'eachHead_{h}']
+                positivesProbPerHead = neighbors[f'eachHead_{h}']
 
             b, n = anchorsProbPerHead.size()
 
@@ -126,3 +139,24 @@ class SCANLoss(nn.Module):
 
 
         return totalLossDict, consistencyLossDict, entropyLossDict
+
+class selfLabelLoss(nn.Module):
+    def __init__(self,selfLabelThreshold,isInputProb=False):
+        super(selfLabelLoss, self).__init__()
+
+        self.selfLabelThreshold = selfLabelThreshold
+        self.isInputProb = isInputProb
+        self.lossMethod = ConfidenceBasedCE(threshold=self.selfLabelThreshold,isInputProb=self.isInputProb)
+
+    def forward(self, anchors, AugedImages):
+        headNum = len(anchors.keys())
+
+        totalLossDict = dict()
+
+        for h in range(headNum):
+
+            loss = self.lossMethod(anchors[f'eachHead_{h}'],AugedImages[f'eachHead_{h}'])
+
+            totalLossDict[f'head_{h}'] = loss
+
+        return totalLossDict

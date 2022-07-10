@@ -34,15 +34,15 @@ from SCAN_trainingProcedure import scanTrain
 from SCAN_losses import SCANLoss
 from SCAN_usefulUtils import getMinHeadIdx,getAccPerConfLst
 import faiss
-from SCAN_MainLoop import doSCAN
+from SCAN_MainLoop1 import doSCAN
 
 
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
-baseDir = '/home/a286/hjs_dir1/mySCAN0/'
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+baseDir = '/home/a286server2/hjs_dir1/mySCAN0/'
 modelLoadDir = '/home/a286winteriscoming/'
-basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
-configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
+basemodelLoadDir = '/home/a286server2/hjs_dir1/mySCAN0/pretrainedModels/'
+configPath = '/home/a286server2/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
 basemodelLoadName = 'cifar10'
 headLoadNum = 1300
@@ -55,7 +55,7 @@ cDim1 = 128
 trnBSize = 128
 labelNoiseRatio = 0.2
 saveRange= 100
-layerMethod= 'linear'
+layerMethod= 'mlp'
 update_cluster_head_only = False
 updateNNTerm = 10
 normalizing = False
@@ -120,11 +120,12 @@ for i in range(10000):
         do.saveHead(iteredNum=i)
         do.saveFeatureExtractor(iteredNum=i)
 
-    # if i % updateNNTerm == 0:
-    #     do.saveNearestNeighbor()
-    #     print('recalculating NN complete')
-    #     print('recalculating NN complete')
-    #     print('recalculating NN complete')
+    if i % updateNNTerm == 0:
+        do.saveNearestNeighbor()
+        print('recalculating NN complete')
+        print('recalculating NN complete')
+        print('recalculating NN complete')
+
 
 
 

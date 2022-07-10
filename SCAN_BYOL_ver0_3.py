@@ -45,8 +45,8 @@ basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
 basemodelLoadName = 'cifar10'
-headLoadNum = 0
-FELoadNum = 0
+headLoadNum = 1300
+FELoadNum = 1300
 embedSize = 128
 clusterNum = 10
 numHeads = 10
@@ -60,6 +60,8 @@ update_cluster_head_only = True
 updateNNTerm = 10
 normalizing = False
 useLinLayer = True
+isInputProb = False
+jointTrnBSize = 4096
 
 plotsaveName = mk_name(embedSize=embedSize,
                        numHeads = numHeads,
@@ -70,11 +72,12 @@ plotsaveName = mk_name(embedSize=embedSize,
                        layerMethod=layerMethod,
                        headOnly = update_cluster_head_only,
                        normalizing=normalizing,
-                       useLinLayer =useLinLayer
+                       useLinLayer = useLinLayer,
+                       isInputProb=isInputProb
                        )
 
-createDirectory(baseDir + 'dirResult2/' + plotsaveName)
-resultSaveDir = baseDir + 'dirResult2/' + plotsaveName + '/'
+createDirectory(baseDir + 'dirResult3/' + plotsaveName)
+resultSaveDir = baseDir + 'dirResult3/' + plotsaveName + '/'
 
 headSaveLoadDir = resultSaveDir+'headModels/'
 FESaveLoadDir = resultSaveDir+'FEModels/'
@@ -95,10 +98,12 @@ do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
              NNSaveDir = NNSaveDir,
              embedSize = embedSize,
              normalizing=normalizing,
-             useLinLayer=useLinLayer,
+             useLinLayer = useLinLayer,
+             isInputProb=isInputProb,
              cDim1=cDim1,
              numHeads = numHeads,
              layerMethod=layerMethod,
+             jointTrnBSize= jointTrnBSize,
              update_cluster_head_only = update_cluster_head_only,
              labelNoiseRatio = labelNoiseRatio,
              configPath = configPath,
@@ -110,15 +115,17 @@ do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
 do.saveNearestNeighbor()
 for i in range(10000):
     do.executeTrainingHeadOnly()
+    # do.executeJointTraining()
     if i % saveRange == 0:
         do.saveHead(iteredNum=i)
         do.saveFeatureExtractor(iteredNum=i)
 
-    if i % updateNNTerm == 0:
-        do.saveNearestNeighbor()
-        print('recalculating NN complete')
-        print('recalculating NN complete')
-        print('recalculating NN complete')
+    # if i % updateNNTerm == 0:
+    #     do.saveNearestNeighbor()
+    #     print('recalculating NN complete')
+    #     print('recalculating NN complete')
+    #     print('recalculating NN complete')
+
 
 
 

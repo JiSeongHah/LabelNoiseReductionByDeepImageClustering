@@ -101,32 +101,30 @@ def selflabelTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion
                     augedEmbed = featureExtractor(AugedImage)
 
                 with torch.no_grad():
-                    output = ClusterHead.forward(embed,inputDiff=False).cpu()
-                AugedOutput = ClusterHead.forward(augedEmbed,inputDiff=False).cpu()
+                    output = ClusterHead.forward(embed,inputDiff=False)
+                AugedOutput = ClusterHead.forward(augedEmbed,inputDiff=False)
             else:
                 with torch.no_grad():
-                    output = ClusterHead.forward(featureExtractor(images),inpudDiff=False).cpu()
-                AugedOutput = ClusterHead.forward(featureExtractor(AugedImage),inputDiff=False).cpu()
+                    output = ClusterHead.forward(featureExtractor(images),inputDiff=False)
+                AugedOutput = ClusterHead.forward(featureExtractor(AugedImage),inputDiff=False)
 
-            for h in range(headNum):
-                loss = criterion(output, AugedOutput)
-                totalLossDict[f'head_{h}'].append(loss)
+            totalLossInnerDict = criterion(output,AugedOutput)
 
-            finalLoss = sum(loss for loss in totalLossDict.values())
+            finalLoss = sum(loss for loss in totalLossInnerDict.values())
             if update_cluster_head_only:
                 optimizer[1].zero_grad()
             else:
                 optimizer[0].zero_grad()
                 optimizer[1].zero_grad()
 
-            loss.backward()
+            finalLoss.backward()
             if update_cluster_head_only:
                 optimizer[1].step()
             else:
                 optimizer[0].step()
                 optimizer[1].step()
 
-    for h in range(headNum):
-        totalLossDict4Plot[f'head_{h}'].append(sum(totalLossDict[f'head_{h}']).cpu().item())
+        for h in range(headNum):
+            totalLossDict4Plot[f'head_{h}'].append(totalLossInnerDict[f'head_{h}'].cpu().item())
 
     return totalLossDict4Plot

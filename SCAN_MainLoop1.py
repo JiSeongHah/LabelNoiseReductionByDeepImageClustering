@@ -57,7 +57,7 @@ class doSCAN(nn.Module):
                  nnNum=20,
                  topKNum = 20,
                  selfLabelThreshold=0.99,
-                 downDir='/home/a286/hjs_ver1/mySCAN0/',
+                 downDir='/home/a286server2/hjs_ver1/mySCAN0/',
                  modelType='resnet18',
                  L2NormalEnd=True,
                  numRepeat=10,
@@ -161,7 +161,7 @@ class doSCAN(nn.Module):
         try:
             print(f'loading {self.FESaveLoadDir} {self.FELoadNum}.pt')
             modelStateDict = torch.load(self.FESaveLoadDir +str(self.FELoadNum)+'.pt')
-            missing = self.FeatureExtractorBYOL.load_state_dict(modelStateDict)
+            missing = self.FeatureExtractorBYOL.load_state_dict(modelStateDict,strict=False)
             # print(set(missing[1]))
             # assert (set(missing[1]) == {
             #     'contrastive_head.0.weight', 'contrastive_head.0.bias',
@@ -172,7 +172,7 @@ class doSCAN(nn.Module):
         except:
             print(f'loading base model..')
             modelStateDict = torch.load(self.basemodelSaveLoadDir + self.basemodelLoadName)
-            missing = self.FeatureExtractorBYOL.load_state_dict(modelStateDict)
+            missing = self.FeatureExtractorBYOL.load_state_dict(modelStateDict,strict=False)
             # assert (set(missing[1]) == {
             #     'contrastive_head.0.weight', 'contrastive_head.0.bias',
             #     'contrastive_head.2.weight', 'contrastive_head.2.bias'}

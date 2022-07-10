@@ -28,7 +28,6 @@ class AugmentedDataset(Dataset):
         if isinstance(transform, dict):
             self.image_transform = transform['standard']
             self.augmentation_transform = transform['augment']
-
         else:
             self.image_transform = transform
             self.augmentation_transform = transform
@@ -37,7 +36,9 @@ class AugmentedDataset(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, index):
+
         sample = self.dataset.__getitem__(index)
+
         image = sample['image']
 
         sample['image'] = self.image_transform(image)
@@ -105,6 +106,8 @@ class baseDataset4SCAN(Dataset):
 
         self.transform = transform
 
+
+
         if dataType == 'cifar10':
             preDataset = CIFAR10(root=downDir, train=True, download=True)
         if dataType == 'cifar100':
@@ -123,6 +126,7 @@ class baseDataset4SCAN(Dataset):
     def __getitem__(self, idx):
 
         img, label = self.dataInput[idx], self.dataLabel[idx]
+
 
         img_size = (img.shape[0],img.shape[1])
 
@@ -143,9 +147,11 @@ def getCustomizedDataset4SCAN(downDir,dataType,transform,nnNum=None,indices=None
 
     dataset = baseDataset4SCAN(downDir=downDir,dataType=dataType,transform=transform)
 
+
     if toAgumentedDataset == True:
 
         dataset = AugmentedDataset(dataset)
+        return dataset
     if toNeighborDataset == True:
         thedataset = NeighborsDataset(dataset,indices=indices,nnNum=nnNum)
         return thedataset

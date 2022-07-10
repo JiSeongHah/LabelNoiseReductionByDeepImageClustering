@@ -34,20 +34,20 @@ from SCAN_trainingProcedure import scanTrain
 from SCAN_losses import SCANLoss
 from SCAN_usefulUtils import getMinHeadIdx,getAccPerConfLst
 import faiss
-from SCAN_MainLoop import doSCAN
+from SCAN_MainLoop1 import doSCAN
 
 
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
-baseDir = '/home/a286/hjs_dir1/mySCAN0/'
+os.environ['CUDA_VISIBLE_DEVICES'] = "7"
+baseDir = '/home/a286server2/hjs_dir1/mySCAN0/'
 modelLoadDir = '/home/a286winteriscoming/'
-basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
-configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
+basemodelLoadDir = '/home/a286server2/hjs_dir1/mySCAN0/pretrainedModels/'
+configPath = '/home/a286server2/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
 basemodelLoadName = 'cifar10'
 headLoadNum = 1300
 FELoadNum = 1300
-embedSize = 128
+embedSize = 512
 clusterNum = 10
 numHeads = 10
 entropyWeight = 5.0
@@ -56,10 +56,10 @@ trnBSize = 128
 labelNoiseRatio = 0.2
 saveRange= 100
 layerMethod= 'linear'
-update_cluster_head_only = False
+update_cluster_head_only = True
 updateNNTerm = 10
 normalizing = False
-useLinLayer = True
+useLinLayer = False
 isInputProb = False
 jointTrnBSize = 4096
 
@@ -125,6 +125,7 @@ for i in range(10000):
     #     print('recalculating NN complete')
     #     print('recalculating NN complete')
     #     print('recalculating NN complete')
+
 
 
 

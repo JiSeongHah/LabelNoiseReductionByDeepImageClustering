@@ -696,6 +696,7 @@ class myCluster4SCAN(nn.Module):
                  dim1,
                  nClusters,
                  lossMethod='CE',
+                 isOutputProb= False,
                  layerMethod='linear'):
         super(myCluster4SCAN, self).__init__()
 
@@ -703,6 +704,7 @@ class myCluster4SCAN(nn.Module):
         self.dim1 = dim1
         self.nClusters = nClusters
         self.layerMethod= layerMethod
+        self.isOutputProb= isOutputProb
 
         if self.layerMethod == 'linear':
             self.MLP = nn.Sequential(
@@ -719,22 +721,22 @@ class myCluster4SCAN(nn.Module):
         if self.lossMethod == 'CE':
             self.LOSS = nn.CrossEntropyLoss()
 
-    def calEntropy(self, actions, isActionInput_prob=True):
-
-        if isActionInput_prob == True:
-            x_ = torch.clamp(actions, min=1e-8)
-            b = x_ * torch.log(x_)
-        else:
-            b = F.softmax(actions, dim=1) * F.log_softmax(actions, dim=1)
-
-        if len(b.size()) == 2:  # Sample-wise entropy
-            Entropy = b.sum(dim=1).mean()
-            return Entropy
-        elif len(b.size()) == 1:  # Distribution-wise entropy
-            Entropy = b.sum()
-            return Entropy
-        else:
-            raise ValueError('Input tensor is %d-Dimensional' % (len(b.size())))
+    # def calEntropy(self, actions, isActionInput_prob=True):
+    #
+    #     if isActionInput_prob == True:
+    #         x_ = torch.clamp(actions, min=1e-8)
+    #         b = x_ * torch.log(x_)
+    #     else:
+    #         b = F.softmax(actions, dim=1) * F.log_softmax(actions, dim=1)
+    #
+    #     if len(b.size()) == 2:  # Sample-wise entropy
+    #         Entropy = b.sum(dim=1).mean()
+    #         return Entropy
+    #     elif len(b.size()) == 1:  # Distribution-wise entropy
+    #         Entropy = b.sum()
+    #         return Entropy
+    #     else:
+    #         raise ValueError('Input tensor is %d-Dimensional' % (len(b.size())))
 
     def getLoss(self,pred,label,withEntropy=False,entropyWeight=5.0,clusteringWeight=1.0):
 
@@ -748,7 +750,10 @@ class myCluster4SCAN(nn.Module):
 
     def forward(self,x):
 
-        out = F.softmax(self.MLP(x),dim=1)
+        if self.isOutputProb ==False:
+            out = self.MLP(x)
+        else:
+            out = F.softmax(self.MLP(x), dim=1)
 
         return out
 
@@ -760,6 +765,7 @@ class myMultiCluster4SCAN(nn.Module):
                  nClusters,
                  numHead,
                  lossMethod='CE',
+                 isOutputProb=False,
                  layerMethod='linear'):
         super(myMultiCluster4SCAN, self).__init__()
 
@@ -767,6 +773,7 @@ class myMultiCluster4SCAN(nn.Module):
         self.dim1 = dim1
         self.nClusters = nClusters
         self.numHead = numHead
+        self.isOutputProb= isOutputProb
         self.lossMethod = lossMethod
         self.layerMethod = layerMethod
 
@@ -775,6 +782,7 @@ class myMultiCluster4SCAN(nn.Module):
                                     dim1=self.dim1,
                                     nClusters=self.nClusters,
                                     lossMethod=self.lossMethod,
+                                    isOutputProb = self.isOutputProb,
                                     layerMethod=self.layerMethod)
             self.__setattr__(f'eachHead_{h}',headH)
 
