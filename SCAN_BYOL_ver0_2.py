@@ -44,22 +44,22 @@ modelLoadDir = '/home/a286winteriscoming/'
 basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
-basemodelLoadName = 'cifar10'
-headLoadNum = 1300
-FELoadNum = 1300
-embedSize = 128
+basemodelLoadName = 'stl10'
+headLoadNum = 100
+FELoadNum = 100
+embedSize = 512
 clusterNum = 10
-numHeads = 10
+numHeads = 1
 entropyWeight = 5.0
-cDim1 = 128
+cDim1 = 512
 trnBSize = 128
 labelNoiseRatio = 0.2
 saveRange= 100
-layerMethod= 'linear'
+layerMethod= 'mlp'
 update_cluster_head_only = False
 updateNNTerm = 10
 normalizing = False
-useLinLayer = True
+useLinLayer = False
 isInputProb = False
 jointTrnBSize = 4096
 
@@ -76,8 +76,8 @@ plotsaveName = mk_name(embedSize=embedSize,
                        isInputProb=isInputProb
                        )
 
-createDirectory(baseDir + 'dirResult3/' + plotsaveName)
-resultSaveDir = baseDir + 'dirResult3/' + plotsaveName + '/'
+createDirectory(baseDir + 'dirResultSTL10_0/' + plotsaveName)
+resultSaveDir = baseDir + 'dirResultSTL10_0/' + plotsaveName + '/'
 
 headSaveLoadDir = resultSaveDir+'headModels/'
 FESaveLoadDir = resultSaveDir+'FEModels/'
@@ -125,6 +125,7 @@ for i in range(10000):
     #     print('recalculating NN complete')
     #     print('recalculating NN complete')
     #     print('recalculating NN complete')
+
 
 
 

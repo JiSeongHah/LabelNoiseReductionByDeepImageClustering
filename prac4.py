@@ -1,7 +1,9 @@
+from torchvision.datasets import STL10,CIFAR10
 
-ds = {}
+dt = CIFAR10(root='~/',train=True,download=True)
 
-for i in range(10):
-    ds[i] = i
+inputs = dt.data
+x = 0
+for i in inputs:
+    print(type(i),i.shape)
 
-print(sum(loss for loss in ds.values()))

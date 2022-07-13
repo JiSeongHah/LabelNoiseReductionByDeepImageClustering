@@ -162,7 +162,7 @@ class doSCAN(nn.Module):
             print(f'loading {self.FESaveLoadDir} {self.FELoadNum}.pt')
             modelStateDict = torch.load(self.FESaveLoadDir +str(self.FELoadNum)+'.pt')
             missing = self.FeatureExtractorBYOL.load_state_dict(modelStateDict)
-            # print(set(missing[1]))
+            print(f'missing : ',set(missing[1]))
             # assert (set(missing[1]) == {
             #     'contrastive_head.0.weight', 'contrastive_head.0.bias',
             #     'contrastive_head.2.weight', 'contrastive_head.2.bias'}
@@ -172,13 +172,13 @@ class doSCAN(nn.Module):
         except:
             print(f'loading base model..')
             modelStateDict = torch.load(self.basemodelSaveLoadDir + self.basemodelLoadName)
-            missing = self.FeatureExtractorBYOL.load_state_dict(modelStateDict)
-            # assert (set(missing[1]) == {
-            #     'contrastive_head.0.weight', 'contrastive_head.0.bias',
-            #     'contrastive_head.2.weight', 'contrastive_head.2.bias'}
-            #         or set(missing[1]) == {
-            #             'contrastive_head.weight', 'contrastive_head.bias'})
-            print('loading base model complete!')
+            missing = self.FeatureExtractorBYOL.load_state_dict(modelStateDict,strict=False)
+            assert (set(missing[1]) == {
+                'contrastive_head.0.weight', 'contrastive_head.0.bias',
+                'contrastive_head.2.weight', 'contrastive_head.2.bias'}
+                    or set(missing[1]) == {
+                        'contrastive_head.weight', 'contrastive_head.bias'})
+            print(f'loading base model {self.basemodelSaveLoadDir + self.basemodelLoadName} complete!')
             self.FELoadNum = 0
 
         try:

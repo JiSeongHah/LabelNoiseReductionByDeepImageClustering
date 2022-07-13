@@ -103,20 +103,23 @@ class baseDataset4SCAN(Dataset):
         super(baseDataset4SCAN, self).__init__()
 
         self.downDir = downDir
-
+        self.dataType = dataType
         self.transform = transform
 
 
 
         if dataType == 'cifar10':
             preDataset = CIFAR10(root=downDir, train=True, download=True)
+            self.dataInput = preDataset.data
+            self.dataLabel = preDataset.targets
         if dataType == 'cifar100':
             preDataset = CIFAR100(root=downDir, train=True, download=True)
+            self.dataInput = preDataset.data
+            self.dataLabel = preDataset.targets
         if dataType == 'stl10':
-            preDataset = STL10(root=downDir, train=True, download=True)
-
-        self.dataInput = preDataset.data
-        self.dataLabel = preDataset.targets
+            preDataset = STL10(root=downDir, split='train', download=True)
+            self.dataInput = preDataset.data
+            self.dataLabel = preDataset.labels
 
 
     def __len__(self):
@@ -127,10 +130,13 @@ class baseDataset4SCAN(Dataset):
 
         img, label = self.dataInput[idx], self.dataLabel[idx]
 
-
         img_size = (img.shape[0],img.shape[1])
 
-        img = Image.fromarray(img)
+        if self.dataType == 'stl10':
+            img = Image.fromarray(np.transpose(img, (1, 2, 0)))
+            img_size = img.size
+        if self.dataType == 'cifar10':
+            img = Image.fromarray(img)
 
         if self.transform is not None:
             img = self.transform(img)

@@ -69,21 +69,3 @@ def delFileOrFolders(dir,exceptionLst):
             os.remove(dir+eachFile)
             print(f'{dir}+{eachFile} removed')
 
-# import os
-#
-# dir = '~/hjs_dir1'
-# lst = os.listdir(dir)
-# print(lst)
-# x = mk_name(*[1,2,3,4],'sex')
-# print(x)
-#
-# dir = '~/'
-# from multiprocessing import Manager
-#
-# manager = Manager()
-# col1 = manager.list()
-# col1.append(1)
-# col2 = manager.list()
-# col2.append(2)
-#
-# lst2csv(save_dir=dir,save_name=x,col1=list(col1),col2=list(col2))
