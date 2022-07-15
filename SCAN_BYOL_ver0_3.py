@@ -44,24 +44,25 @@ modelLoadDir = '/home/a286winteriscoming/'
 basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
-basemodelLoadName = 'stl10'
+basemodelLoadName = 'cifar100'
 headLoadNum = 100
 FELoadNum = 100
 embedSize = 512
-clusterNum = 10
+clusterNum = 100
 numHeads = 1
 entropyWeight = 5.0
 cDim1 = 512
 trnBSize = 128
 labelNoiseRatio = 0.2
-saveRange= 100
+saveRange= 20
 layerMethod= 'linear'
 update_cluster_head_only = False
 updateNNTerm = 10
 normalizing = False
 useLinLayer = False
 isInputProb = False
-jointTrnBSize = 4096
+jointTrnBSize = 512
+accumulNum = 4
 
 plotsaveName = mk_name(embedSize=embedSize,
                        numHeads = numHeads,
@@ -76,8 +77,8 @@ plotsaveName = mk_name(embedSize=embedSize,
                        isInputProb=isInputProb
                        )
 
-createDirectory(baseDir + 'dirResultSTL10_0/' + plotsaveName)
-resultSaveDir = baseDir + 'dirResultSTL10_0/' + plotsaveName + '/'
+createDirectory(baseDir + 'dirResultCIFAR100_0/' + plotsaveName)
+resultSaveDir = baseDir + 'dirResultCIFAR100_0/' + plotsaveName + '/'
 
 headSaveLoadDir = resultSaveDir+'headModels/'
 FESaveLoadDir = resultSaveDir+'FEModels/'
@@ -104,6 +105,7 @@ do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
              numHeads = numHeads,
              layerMethod=layerMethod,
              jointTrnBSize= jointTrnBSize,
+             accumulNum = accumulNum,
              update_cluster_head_only = update_cluster_head_only,
              labelNoiseRatio = labelNoiseRatio,
              configPath = configPath,

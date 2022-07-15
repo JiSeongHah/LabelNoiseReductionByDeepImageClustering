@@ -177,9 +177,8 @@ class callAnyResnet(nn.Module):
                                    )
             self.backboneDim = 512
         elif modelType == 'resnet50':
-            self.backbone = ResNet(block=BottleNeck,
-                                   num_blocks=[3,4,6,3]
-                                   )
+            self.backbone = models.resnet50(pretrained=False)
+            self.backbone.fc = nn.Identity()
             self.backboneDim = 1024
         # elif modelType == 'resnet101':
         #     return ResNet(block=BottleNeck,
@@ -215,6 +214,53 @@ class callAnyResnet(nn.Module):
             out =  self.contrastive_head(out)
             out = F.normalize(out,dim=1)
         return out
+
+
+class callResnet4Imagenet(nn.Module):
+    def __init__(self,modelType,numClass,headType='mlp',useLinLayer=False,normalizing=True):
+        super(callResnet4Imagenet, self).__init__()
+
+        self.useLinLayer = useLinLayer
+        self.normalizing = normalizing
+
+        if modelType == 'resnet18':
+            self.backbone= ResNet(block=BasicBlock,
+                                  num_blocks=[2,2,2,2]
+                                  )
+            self.backboneDim= 512
+        elif modelType == 'resnet34':
+            self.backbone = ResNet(block=BasicBlock,
+                                   num_blocks=[3,4,6,3]
+                                   )
+            self.backboneDim = 512
+        elif modelType == 'resnet50':
+            self.backbone = ResNet(block=Bottleneck,
+                                   num_blocks=[3,4,6,3]
+                                   )
+            self.backboneDim = 1024
+        # elif modelType == 'resnet101':
+        #     return ResNet(block=BottleNeck,
+        #                   num_blocks=[3,4,23,3],
+        #                   num_classes=numClass,
+        #                   L2NormalEnd=L2NormalEnd)
+        # elif modelType == 'resnet152':
+        #     return ResNet(block=BottleNeck,
+        #                   num_blocks=[3,8,36,3],
+        #                   num_classes=numClass,
+        #                   L2NormalEnd=L2NormalEnd)
+        else:
+            self.backbone = ResNet(block=BasicBlock,
+                                   num_blocks=[2, 2, 2, 2]
+                                   )
+            self.backboneDim = 512
+
+        if useLinLayer ==True:
+            if headType == 'oneLinear':
+                self.contrastive_head = nn.Linear(self.backboneDim,numClass)
+            elif headType == 'mlp':
+                self.contrastive_head = nn.Sequential(nn.Linear(self.backboneDim, self.backboneDim),
+                                          nn.ReLU(),
+                                          nn.Linear(self.backboneDim, numClass))
 
 
 class BasicBlock4one(nn.Module):

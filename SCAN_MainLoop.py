@@ -32,7 +32,7 @@ from SCAN_CONFIG import Config
 from SCAN_DATASETS import getCustomizedDataset4SCAN
 from SCAN_trainingProcedure import scanTrain,selflabelTrain
 from SCAN_losses import SCANLoss,selfLabelLoss
-from SCAN_usefulUtils import getMinHeadIdx,getAccPerConfLst
+from SCAN_usefulUtils import getMinHeadIdx,getAccPerConfLst,loadPretrained4imagenet
 import faiss
 
 
@@ -52,6 +52,7 @@ class doSCAN(nn.Module):
                  normalizing,
                  useLinLayer,
                  isInputProb,
+                 accumulNum=4,
                  update_cluster_head_only=False,
                  layerMethod='linear',
                  nnNum=20,
@@ -124,6 +125,7 @@ class doSCAN(nn.Module):
         self.lossMethod = lossMethod
         self.entropyWeight = entropyWeight
         self.clusteringWeight = clusteringWeight
+        self.accumulNum = accumulNum
         self.update_cluster_head_only = update_cluster_head_only
 
         dataCfg = Config.fromfile(self.configPath)
@@ -136,6 +138,10 @@ class doSCAN(nn.Module):
         if basemodelLoadName == 'stl10':
             cfgScan = dataCfg.dataConfigs_Stl10.trans2
             self.baseTransform = dataCfg.dataConfigs_Stl10.baseTransform
+        if basemodelLoadName == 'stl10':
+            cfgScan = dataCfg.dataConfigs_Stl10.trans2
+            self.baseTransform = dataCfg.dataConfigs_Stl10.baseTransform
+
         print(cfgScan)
         self.scanTransform = get_train_transformations(cfgScan)
 
@@ -499,6 +505,7 @@ class doSCAN(nn.Module):
                                                                    isInputProb=self.isInputProb),
                                            optimizer=[self.optimizerBackbone,self.optimizerCHead],
                                            device=self.device,
+                                           accumulNum=self.accumulNum,
                                            update_cluster_head_only=self.update_cluster_head_only)
 
 

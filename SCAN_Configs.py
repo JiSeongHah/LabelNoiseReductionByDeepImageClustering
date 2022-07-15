@@ -69,3 +69,24 @@ dataConfigs_Stl10 = dict(
                            random=True)
     ),
 )
+
+dataConfigs_Imagenet50 = dict(
+    baseTransform = transforms.Compose([transforms.ToTensor(),
+                                         transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                              std=[0.229, 0.224, 0.225])]),
+    type="imagenet50",
+    trans1=dict(
+        aug_type="weak",
+        crop_size=224,
+        normalize=dict(mean=[0.485, 0.456, 0.406],
+                       std=[0.229, 0.224, 0.225]),
+    ),
+    trans2=dict(
+        aug_type="simclr",
+        random_resized_crop =
+        crop_size=224,
+        normalize=dict(mean=[0.485, 0.456, 0.406],
+                       std=[0.229, 0.224, 0.225]),
+
+    ),
+)

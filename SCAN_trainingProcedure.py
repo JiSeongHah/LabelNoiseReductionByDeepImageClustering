@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-
+from tqdm import tqdm
 
 def scanTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, optimizer, device, update_cluster_head_only=True):
     """
@@ -71,7 +71,7 @@ def scanTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, opt
 
     return totalLossDict, consistencyLossDict, entropyLossDict
 
-def selflabelTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, optimizer, device, update_cluster_head_only=True):
+def selflabelTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, optimizer, device,accumulNum, update_cluster_head_only=True):
 
     if update_cluster_head_only:
         featureExtractor.eval()  # No need to update BN
@@ -90,6 +90,7 @@ def selflabelTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion
     for h in range(headNum):
         totalLossDict4Plot[f'head_{h}'] = []
 
+    train_loader = tqdm(train_loader)
     with torch.set_grad_enabled(True):
         for i, batch in enumerate(train_loader):
             images = batch['image'].to(device)
@@ -111,18 +112,21 @@ def selflabelTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion
             totalLossInnerDict = criterion(output,AugedOutput)
 
             finalLoss = sum(loss for loss in totalLossInnerDict.values())
-            if update_cluster_head_only:
-                optimizer[1].zero_grad()
-            else:
-                optimizer[0].zero_grad()
-                optimizer[1].zero_grad()
+            train_loader.set_description(f'training {i}/{len(train_loader)}')
+            train_loader.set_postfix({'loss : ':finalLoss.item()})
 
             finalLoss.backward()
-            if update_cluster_head_only:
-                optimizer[1].step()
-            else:
-                optimizer[0].step()
-                optimizer[1].step()
+
+            if i%accumulNum == 0:
+                if update_cluster_head_only:
+                    optimizer[1].step()
+                    optimizer[1].zero_grad()
+                else:
+                    optimizer[0].step()
+                    optimizer[1].step()
+                    optimizer[0].zero_grad()
+                    optimizer[1].zero_grad()
+
 
         for h in range(headNum):
             totalLossDict4Plot[f'head_{h}'].append(totalLossInnerDict[f'head_{h}'].cpu().item())

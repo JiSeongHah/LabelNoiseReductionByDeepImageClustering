@@ -137,6 +137,8 @@ class baseDataset4SCAN(Dataset):
             img_size = img.size
         if self.dataType == 'cifar10':
             img = Image.fromarray(img)
+        if self.dataType == 'cifar100':
+            img = Image.fromarray(img)
 
         if self.transform is not None:
             img = self.transform(img)

@@ -72,7 +72,8 @@ def getAccPerConfLst(Dict,linspaceNum,minConf=0.95):
 
     return finalConf, finalAcc,finalAllocNum
 
-
+def loadPretrained4imagenet():
+    
 
 
 
