@@ -44,11 +44,11 @@ modelLoadDir = '/home/a286winteriscoming/'
 basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
-basemodelLoadName = 'cifar100'
-headLoadNum = 100
-FELoadNum = 100
-embedSize = 512
-clusterNum = 100
+basemodelLoadName = 'imagenet50'
+headLoadNum = 0
+FELoadNum = 0
+embedSize = 2048
+clusterNum = 50
 numHeads = 10
 entropyWeight = 5.0
 cDim1 = 512
@@ -61,8 +61,8 @@ updateNNTerm = 10
 normalizing = False
 useLinLayer = False
 isInputProb = False
-jointTrnBSize = 512
-accumulNum = 4
+jointTrnBSize = 4096
+accumulNum = 1
 
 plotsaveName = mk_name(embedSize=embedSize,
                        numHeads = numHeads,
@@ -77,8 +77,8 @@ plotsaveName = mk_name(embedSize=embedSize,
                        isInputProb=isInputProb
                        )
 
-createDirectory(baseDir + 'dirResultCIFAR100_0/' + plotsaveName)
-resultSaveDir = baseDir + 'dirResultCIFAR100_0/' + plotsaveName + '/'
+createDirectory(baseDir + 'dirResultImagenet50_0/' + plotsaveName)
+resultSaveDir = baseDir + 'dirResultImagenet50_0/' + plotsaveName + '/'
 
 headSaveLoadDir = resultSaveDir+'headModels/'
 FESaveLoadDir = resultSaveDir+'FEModels/'

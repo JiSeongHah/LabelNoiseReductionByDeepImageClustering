@@ -93,42 +93,47 @@ def selflabelTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion
     train_loader = tqdm(train_loader)
     with torch.set_grad_enabled(True):
         for i, batch in enumerate(train_loader):
-            images = batch['image'].to(device)
-            AugedImage = batch['AugedImage'].to(device)
+            try:
+                images = batch['image'].to(device)
+                AugedImage = batch['AugedImage'].to(device)
 
-            if update_cluster_head_only:
-                with torch.no_grad():
-                    embed = featureExtractor(images)
-                    augedEmbed = featureExtractor(AugedImage)
-
-                with torch.no_grad():
-                    output = ClusterHead.forward(embed,inputDiff=False)
-                AugedOutput = ClusterHead.forward(augedEmbed,inputDiff=False)
-            else:
-                with torch.no_grad():
-                    output = ClusterHead.forward(featureExtractor(images),inputDiff=False)
-                AugedOutput = ClusterHead.forward(featureExtractor(AugedImage),inputDiff=False)
-
-            totalLossInnerDict = criterion(output,AugedOutput)
-
-            finalLoss = sum(loss for loss in totalLossInnerDict.values())
-            train_loader.set_description(f'training {i}/{len(train_loader)}')
-            train_loader.set_postfix({'loss : ':finalLoss.item()})
-
-            finalLoss.backward()
-
-            if i%accumulNum == 0:
                 if update_cluster_head_only:
-                    optimizer[1].step()
-                    optimizer[1].zero_grad()
+                    with torch.no_grad():
+                        embed = featureExtractor(images)
+                        augedEmbed = featureExtractor(AugedImage)
+
+                    with torch.no_grad():
+                        output = ClusterHead.forward(embed,inputDiff=False)
+                    AugedOutput = ClusterHead.forward(augedEmbed,inputDiff=False)
                 else:
-                    optimizer[0].step()
-                    optimizer[1].step()
-                    optimizer[0].zero_grad()
-                    optimizer[1].zero_grad()
+                    with torch.no_grad():
+                        output = ClusterHead.forward(featureExtractor(images),inputDiff=False)
+                    AugedOutput = ClusterHead.forward(featureExtractor(AugedImage),inputDiff=False)
+
+                totalLossInnerDict = criterion(output,AugedOutput)
+
+                finalLoss = sum(loss for loss in totalLossInnerDict.values())
+                train_loader.set_description(f'training {i}/{len(train_loader)}')
+                train_loader.set_postfix({'loss : ':finalLoss.item()})
+
+                finalLoss.backward()
+
+                if i%accumulNum == 0:
+                    if update_cluster_head_only:
+                        optimizer[1].step()
+                        optimizer[1].zero_grad()
+                    else:
+                        optimizer[0].step()
+                        optimizer[1].step()
+                        optimizer[0].zero_grad()
+                        optimizer[1].zero_grad()
+
+                for h in range(headNum):
+                    totalLossDict4Plot[f'head_{h}'].append(totalLossInnerDict[f'head_{h}'].cpu().item())
+                
+            except:
+                pass
 
 
-        for h in range(headNum):
-            totalLossDict4Plot[f'head_{h}'].append(totalLossInnerDict[f'head_{h}'].cpu().item())
 
     return totalLossDict4Plot

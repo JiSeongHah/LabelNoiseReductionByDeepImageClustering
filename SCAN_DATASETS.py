@@ -10,7 +10,7 @@ import torchvision.transforms as transforms
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-
+import pickle
 
 """ 
     AugmentedDataset
@@ -99,14 +99,13 @@ class baseDataset4SCAN(Dataset):
     def __init__(self,
                  downDir,
                  dataType,
-                 transform):
+                 transform
+                 ):
         super(baseDataset4SCAN, self).__init__()
 
         self.downDir = downDir
         self.dataType = dataType
         self.transform = transform
-
-
 
         if dataType == 'cifar10':
             preDataset = CIFAR10(root=downDir, train=True, download=True)
@@ -121,35 +120,90 @@ class baseDataset4SCAN(Dataset):
             self.dataInput = preDataset.data
             self.dataLabel = preDataset.labels
 
+        if dataType in ['imagenet50','imagenet100','imagenet200','tinyImagenet']:
+            with open(self.downDir+f'SCAN_imagenets/imagenet50_PathLst.pkl', 'rb') as F:
+                self.PathLst = pickle.load(F)
+
+            with open(self.downDir+f'SCAN_imagenets/{dataType}_LabelDict.pkl', 'rb') as F:
+                self.labelDict = pickle.load(F)
+
+            self.resize = transforms.Resize((256,256))
+
 
     def __len__(self):
 
-        return len(self.dataInput)
+        if self.dataType == 'cifar10' or\
+                self.dataType == 'cifar100' or\
+                self.dataType == 'stl10':
+            return len(self.dataInput)
+        else:
+            return len(self.PathLst)
+
 
     def __getitem__(self, idx):
 
-        img, label = self.dataInput[idx], self.dataLabel[idx]
+        if self.dataType == 'cifar10' or \
+                self.dataType == 'cifar100' or \
+                self.dataType == 'stl10':
 
-        img_size = (img.shape[0],img.shape[1])
+            img, label = self.dataInput[idx], self.dataLabel[idx]
 
-        if self.dataType == 'stl10':
-            img = Image.fromarray(np.transpose(img, (1, 2, 0)))
+            img_size = (img.shape[0],img.shape[1])
+
+            if self.dataType == 'stl10':
+                img = Image.fromarray(np.transpose(img, (1, 2, 0)))
+                img_size = img.size
+            if self.dataType == 'cifar10':
+                img = Image.fromarray(img)
+            if self.dataType == 'cifar100':
+                img = Image.fromarray(img)
+
+            if self.transform is not None:
+                img = self.transform(img)
+
+            out = {'image': img, 'label': label, 'meta': {'img_size': img_size, 'index': idx}}
+
+            return out
+
+        else:
+
+            path = self.PathLst[idx]
+            label = self.labelDict[path.split('/')[-2]]
+
+            with open(path, 'rb') as f:
+                img = Image.open(f).convert('RGB')
             img_size = img.size
-        if self.dataType == 'cifar10':
-            img = Image.fromarray(img)
-        if self.dataType == 'cifar100':
-            img = Image.fromarray(img)
+            
+            
+            img = self.resize(img)
 
-        if self.transform is not None:
-            img = self.transform(img)
+            if self.transform is not None:
+                img = self.transform(img)
 
-        out = {'image': img, 'label': label, 'meta': {'img_size': img_size, 'index': idx}}
 
-        return out
+
+            out = {'image': img, 'label': label, 'meta': {'img_size': img_size, 'index': idx}}
+
+            return out
+
+
 
     def get_image(self, index):
-        img = self.data[index]
-        return
+        if self.dataType == 'cifar10' or \
+                self.dataType == 'cifar100' or \
+                self.dataType == 'stl10':
+
+            img = self.data[index]
+            return
+        else:
+            path = self.PathLst[idx]
+            label = self.labelDict[path.split('/')[-2]]
+
+            with open(path, 'rb') as f:
+                img = Image.open(f).convert('RGB')
+            img_size = img.size
+            img = self.resize(img)
+            return
 
 def getCustomizedDataset4SCAN(downDir,dataType,transform,nnNum=None,indices=None,toAgumentedDataset=False,toNeighborDataset=False,baseVer=False):
 

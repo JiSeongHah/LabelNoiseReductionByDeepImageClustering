@@ -179,7 +179,7 @@ class callAnyResnet(nn.Module):
         elif modelType == 'resnet50':
             self.backbone = models.resnet50(pretrained=False)
             self.backbone.fc = nn.Identity()
-            self.backboneDim = 1024
+            self.backboneDim = 2048
         # elif modelType == 'resnet101':
         #     return ResNet(block=BottleNeck,
         #                   num_blocks=[3,4,23,3],

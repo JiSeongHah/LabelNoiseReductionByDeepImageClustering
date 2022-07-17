@@ -58,7 +58,7 @@ class doSCAN(nn.Module):
                  nnNum=20,
                  topKNum = 20,
                  selfLabelThreshold=0.99,
-                 downDir='/home/a286/hjs_ver1/mySCAN0/',
+                 downDir='/home/a286/hjs_dir1/mySCAN0/',
                  modelType='resnet18',
                  L2NormalEnd=True,
                  numRepeat=10,
@@ -90,6 +90,19 @@ class doSCAN(nn.Module):
         if basemodelLoadName == 'stl10':
             self.basemodelLoadName = 'simclr_stl-10.pth.tar'
             self.dataType = basemodelLoadName
+        if basemodelLoadName == 'imagenet50':
+            self.basemodelLoadName = 'moco_v2_800ep_pretrain.pth.tar'
+            self.dataType = basemodelLoadName
+        if basemodelLoadName == 'imagenet100':
+            self.basemodelLoadName = 'moco_v2_800ep_pretrain.pth.tar'
+            self.dataType = basemodelLoadName
+        if basemodelLoadName == 'imagenet200':
+            self.basemodelLoadName = 'moco_v2_800ep_pretrain.pth.tar'
+            self.dataType = basemodelLoadName
+        if basemodelLoadName == 'tinyimagenet':
+            self.basemodelLoadName = 'moco_v2_800ep_pretrain.pth.tar'
+            self.dataType = basemodelLoadName
+
 
         self.headSaveLoadDir = headSaveLoadDir
         self.FESaveLoadDir = FESaveLoadDir
@@ -105,6 +118,8 @@ class doSCAN(nn.Module):
         self.isInputProb = isInputProb
 
         self.modelType = modelType
+        if basemodelLoadName in ['imagenet50','imagenet100','imagenet200','tinyimagenet']:
+            self.modelType = 'resnet50'
         self.L2NormalEnd = L2NormalEnd
         self.cDim1 = cDim1
         self.topKNum = topKNum
@@ -138,9 +153,13 @@ class doSCAN(nn.Module):
         if basemodelLoadName == 'stl10':
             cfgScan = dataCfg.dataConfigs_Stl10.trans2
             self.baseTransform = dataCfg.dataConfigs_Stl10.baseTransform
-        if basemodelLoadName == 'stl10':
-            cfgScan = dataCfg.dataConfigs_Stl10.trans2
-            self.baseTransform = dataCfg.dataConfigs_Stl10.baseTransform
+        if basemodelLoadName in ['imagenet50','imagenet100','imagenet200']:
+            cfgScan = dataCfg.dataConfigs_Imagenet.trans2
+            self.baseTransform = dataCfg.dataConfigs_Imagenet.baseTransform
+        if basemodelLoadName == 'tinyimagenet':
+            cfgScan = dataCfg.dataConfigs_tinyImagenet.trans2
+            self.baseTransform = dataCfg.dataConfigs_tinyImagenet.baseTransform
+
 
         print(cfgScan)
         self.scanTransform = get_train_transformations(cfgScan)
@@ -176,16 +195,23 @@ class doSCAN(nn.Module):
             #             'contrastive_head.weight', 'contrastive_head.bias'})
             print(f'loading {self.FESaveLoadDir}{self.FELoadNum}.pt complete successfully!~!')
         except:
-            print(f'loading base model..')
-            modelStateDict = torch.load(self.basemodelSaveLoadDir + self.basemodelLoadName)
-            missing = self.FeatureExtractorBYOL.load_state_dict(modelStateDict,strict=False)
-            assert (set(missing[1]) == {
-                'contrastive_head.0.weight', 'contrastive_head.0.bias',
-                'contrastive_head.2.weight', 'contrastive_head.2.bias'}
-                    or set(missing[1]) == {
-                        'contrastive_head.weight', 'contrastive_head.bias'})
-            print(f'loading base model {self.basemodelSaveLoadDir + self.basemodelLoadName} complete!')
-            self.FELoadNum = 0
+            if basemodelLoadName not in ['cifar10','cifar100','stl10']:
+                print(f'loading base model..')
+                loadPretrained4imagenet(baseLoadDir = self.basemodelSaveLoadDir+self.basemodelLoadName,
+                                        model=self.FeatureExtractorBYOL)
+                print(f'loading base model {self.basemodelSaveLoadDir + self.basemodelLoadName} complete!')
+                self.FELoadNum = 0
+            else:
+                print(f'loading base model..')
+                modelStateDict = torch.load(self.basemodelSaveLoadDir + self.basemodelLoadName)
+                missing = self.FeatureExtractorBYOL.load_state_dict(modelStateDict,strict=False)
+                assert (set(missing[1]) == {
+                    'contrastive_head.0.weight', 'contrastive_head.0.bias',
+                    'contrastive_head.2.weight', 'contrastive_head.2.bias'}
+                        or set(missing[1]) == {
+                            'contrastive_head.weight', 'contrastive_head.bias'})
+                print(f'loading base model {self.basemodelSaveLoadDir + self.basemodelLoadName} complete!')
+                self.FELoadNum = 0
 
         try:
             self.ClusterHead = myMultiCluster4SCAN(inputDim=self.embedSize,
@@ -197,7 +223,7 @@ class doSCAN(nn.Module):
 
             headLoadedDict= torch.load(self.headSaveLoadDir+str(self.headLoadNum)+'.pt')
             self.ClusterHead.load_state_dict(headLoadedDict)
-            print(f'loading saved head : {str(self.headLoadNum)}.pt complete')
+            print(f'loading saved head : {str(self.headLoadNum)}.pt complete!!!!!!!')
         except:
             print('loading saved head failed so start with fresh head')
             self.ClusterHead = myMultiCluster4SCAN(inputDim=self.embedSize,
@@ -279,12 +305,13 @@ class doSCAN(nn.Module):
 
         totalFeatures = []
         totalLabels = []
-        for idx,i in enumerate(dataloader4kNN):
-            inputs = i['image'].to(self.device)
-            labels = i['label']
-            features = self.FeatureExtractorBYOL(inputs).cpu().clone().detach()
-            totalFeatures.append(features)
-            totalLabels.append(labels)
+        with torch.set_grad_enabled(False):
+            for idx,i in enumerate(dataloader4kNN):
+                inputs = i['image'].to(self.device)
+                labels = i['label']
+                features = self.FeatureExtractorBYOL(inputs).cpu().clone().detach()
+                totalFeatures.append(features)
+                totalLabels.append(labels)
 
         totalFeatures = torch.cat(totalFeatures)
         totalLabels = torch.cat(totalLabels)

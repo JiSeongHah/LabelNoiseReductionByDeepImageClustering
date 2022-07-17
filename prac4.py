@@ -1,4 +1,178 @@
-import os
+# import os
+# import pickle
+# 
+# basedir = '/home/a286winteriscoming/SCAN_imagenets/'
+# dir = basedir+'imagenet50'
+# lst = os.walk(dir)
+# 
+# totalPathLst = []
+# for walk in lst:
+#     eachPath = walk[0]
+#     fles = walk[2]
+# 
+#     for fle in fles:
+#         totalPathLst.append(os.path.join(eachPath,fle))
+
+
+# with open(basedir+'imagenet50_PathLst.pkl','wb') as f:
+#     pickle.dump(totalPathLst,f)
+
+# with open(basedir+'imagenet200_LabelDict.pkl','rb') as F:
+#     mylabelDict = pickle.load(F)
+
+# with open(basedir+'imagenet50_PathLst.pkl','rb') as f:
+#     myLst = pickle.load(f)
+#
+# for i in myLst:
+#     print(i)
+    # label = mylabelDict[i.split('/')[-2]]
+    # print(label)
+
+
+# baseDir = '/home/a286/hjs_dir1/mySCAN0/SCAN_imagenets/'
+#
+# import pickle
+# with open(baseDir+'imagenet200_PathLst.pkl','rb') as F:
+#     myDict = pickle.load(F)
+#
+# for i in myDict:
+#     print(i)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# with open(dir+'imagenet200.txt') as F:
+#     lst = F.readlines()
+#
+#
+# imagenet50labelDict= {}
+# for idx,i in enumerate(lst):
+#     imagenet50labelDict[i.split(' ')[0]] = idx
+#
+#
+# # with open(dir+'imagenet200_LabelDict.pkl','wb') as FF:
+# #     pickle.dump(imagenet50labelDict,FF)
+#
+# with open(dir+'imagenet200_LabelDict.pkl','rb') as f:
+#     myDict= pickle.load(f)
+#
+# for k,v in myDict.items():
+#     print(k,v)
+
+
+
+#
+# from SCAN_usefulUtils import saveTinyImagenetPathLstAndLabelDict
+# dir = '/home/a286/hjs_dir1/mySCAN0/SCAN_imagenets/'
+# do =  saveTinyImagenetPathLstAndLabelDict(dir)
+# dir = '/home/a286/hjs_dir1/mySCAN0/SCAN_imagenets/'
+# import pickle
+# with open(dir+'tinyImagenet_PathLst.pkl','rb') as F:
+#     myDict = pickle.load(F)
+#
+# for i in myDict:
+#     print(i)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # def delFileOrFolders(dir,exceptionLst):
@@ -32,12 +206,12 @@ import os
 #
 
 
-
 #
-# import torch
-# from MY_MODELS import callAnyResnet
-# import torchvision.models as models
-# from collections import OrderedDict
+#
+import torch
+from MY_MODELS import callAnyResnet
+import torchvision.models as models
+from collections import OrderedDict
 #
 # model = callAnyResnet(modelType = 'resnet50',
 #                       numClass = 13 )
@@ -45,15 +219,19 @@ import os
 # # model = models.__dict__['resnet50']()
 #
 #
+# model.fc = torch.nn.Identity()
 #
 #
+# import torch
+# from collections import OrderedDict
 #
 # dir = '/home/a286winteriscoming/Downloads/pretrainedModels/moco_v2_800ep_pretrain.pth.tar'
 # # dir = '/home/a286winteriscoming/Downloads/pretrainedModels/moco_v1_200ep_pretrain.pth.tar'
 # modelDict = torch.load(dir)
-# newModelDict= OrderedDict()
 #
 #
+#
+# newModelDict= dict()
 # for k,v in modelDict['state_dict'].items():
 #     if k[:17] == 'module.encoder_q.':
 #         name = 'backbone.'+k[17:]
@@ -67,12 +245,23 @@ import os
 #
 # missing = model.load_state_dict(newModelDict,strict=False)
 # print(missing)
+#
+#
+# x = torch.randn(5,3,224,224)
+#
+# print(model(x).size())
 
 
+import pickle
+import os
 
-import torch
-from torchvision.datasets import CIFAR100
+# lst = os.listdir('/home/a286/hjs_dir1/mySCAN0/')
+# for i in lst:
+#     print(i)
+with open('/home/a286/hjs_dir1/mySCAN0/SCAN_imagenets/imagenet50_PathLst.pkl','rb') as F:
+    myDict= pickle.load(F)
 
-dt = CIFAR100(root='~/',train=True,download=True)
+for i in myDict:
+    print(i)
 
-print(dt.targets)
+

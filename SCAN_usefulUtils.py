@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from scipy.stats import mode
 import pickle
@@ -69,11 +70,100 @@ def getAccPerConfLst(Dict,linspaceNum,minConf=0.95):
     finalAcc.append(np.mean(totalXDict['over_' + str(round(xLst[-1], 2))]))
     finalAllocNum.append(len(totalXDict['over_' + str(round(xLst[-1], 2))]))
 
-
     return finalConf, finalAcc,finalAllocNum
 
-def loadPretrained4imagenet():
+
+def saveImagenetPathLstAndLabelDict(baseDir):
     
+    dolst = ['imagenet50','imagenet100','imagenet200']
+
+    for eachDir in dolst:
+        dir =  baseDir+eachDir
+
+        lst = os.walk(dir)
+        totalPathLst = []
+
+        for walk in lst:
+            eachPath = walk[0]
+            fles = walk[2]
+
+            for fle in fles:
+                totalPathLst.append(os.path.join(eachPath,fle))
+
+        with open(baseDir+eachDir+'_PathLst.pkl','wb') as f:
+            pickle.dump(totalPathLst,f)
+
+
+        with open(baseDir+eachDir+'.txt') as F:
+            labelLst = F.readlines()
+
+
+        imagenetLabelDict= {}
+        for idx,i in enumerate(labelLst):
+            imagenetLabelDict[i.split(' ')[0]] = idx
+
+        with open(baseDir+eachDir+'_LabelDict.pkl','wb') as FF:
+            pickle.dump(imagenetLabelDict,FF)
+
+
+def saveTinyImagenetPathLstAndLabelDict(baseDir):
+
+    dir = baseDir + 'tiny-imagenet-200/train/'
+
+    lst = os.walk(dir)
+    totalPathLst = []
+
+    for walk in lst:
+        eachPath = walk[0]
+        fles = walk[2]
+
+        for fle in fles:
+            if fle.endswith('.JPEG'):
+                totalPathLst.append(os.path.join(eachPath, fle))
+
+    with open(baseDir + 'tinyImagenet_PathLst.pkl', 'wb') as f:
+        pickle.dump(totalPathLst, f)
+
+    labelNameLst = os.listdir(dir)
+
+    imagenetLabelDict = {}
+    for idx, i in enumerate(labelNameLst):
+        imagenetLabelDict[i.split(' ')[0]] = idx
+
+    with open(baseDir + 'tinyImagenet_LabelDict.pkl', 'wb') as FF:
+        pickle.dump(imagenetLabelDict, FF)
+
+
+
+def loadPretrained4imagenet(baseLoadDir,model):
+    import torch
+    from collections import OrderedDict
+
+    dir = baseLoadDir
+    modelDict = torch.load(dir)
+    newModelDict = OrderedDict()
+
+    for k, v in modelDict['state_dict'].items():
+        if k[:17] == 'module.encoder_q.':
+            name = 'backbone.' + k[17:]
+        else:
+            name = k
+        newModelDict[name] = v
+
+    # for modelLayer, dictLayer in zip(model.state_dict(), newModelDict):
+    #     print(modelLayer, '   ', dictLayer)
+
+    missing = model.load_state_dict(newModelDict, strict=False)
+    assert (set(missing[1]) == {'backbone.fc.0.weight',
+                                'backbone.fc.0.bias',
+                                'backbone.fc.2.weight',
+                                'backbone.fc.2.bias'}
+            or set(missing[1]) == {
+                'contrastive_head.weight', 'contrastive_head.bias'})
+    return model
+
+
+
 
 
 

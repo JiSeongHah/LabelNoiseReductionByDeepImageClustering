@@ -70,11 +70,11 @@ dataConfigs_Stl10 = dict(
     ),
 )
 
-dataConfigs_Imagenet50 = dict(
+dataConfigs_Imagenet = dict(
     baseTransform = transforms.Compose([transforms.ToTensor(),
                                          transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                                               std=[0.229, 0.224, 0.225])]),
-    type="imagenet50",
+    type="imagenet",
     trans1=dict(
         aug_type="weak",
         crop_size=224,
@@ -82,11 +82,36 @@ dataConfigs_Imagenet50 = dict(
                        std=[0.229, 0.224, 0.225]),
     ),
     trans2=dict(
-        aug_type="simclr",
-        random_resized_crop =
+        aug_type="scan",
         crop_size=224,
         normalize=dict(mean=[0.485, 0.456, 0.406],
                        std=[0.229, 0.224, 0.225]),
+        num_strong_augs=4,
+        cutout_kwargs=dict(n_holes=1,
+                           length=32,
+                           random=True)
+    ),
+)
 
+dataConfigs_tinyImagenet = dict(
+    baseTransform = transforms.Compose([transforms.ToTensor(),
+                                         transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                              std=[0.229, 0.224, 0.225])]),
+    type="imagenet",
+    trans1=dict(
+        aug_type="weak",
+        crop_size=64,
+        normalize=dict(mean=[0.485, 0.456, 0.406],
+                       std=[0.229, 0.224, 0.225]),
+    ),
+    trans2=dict(
+        aug_type="scan",
+        crop_size=64,
+        normalize=dict(mean=[0.485, 0.456, 0.406],
+                       std=[0.229, 0.224, 0.225]),
+        num_strong_augs=4,
+        cutout_kwargs=dict(n_holes=1,
+                           length=32,
+                           random=True)
     ),
 )
