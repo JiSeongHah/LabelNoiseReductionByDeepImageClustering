@@ -44,11 +44,11 @@ modelLoadDir = '/home/a286winteriscoming/'
 basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
-basemodelLoadName = 'imagenet50'
+basemodelLoadName = 'imagenet10'
 headLoadNum = 0
 FELoadNum = 0
 embedSize = 2048
-clusterNum = 50
+clusterNum = 10
 numHeads = 10
 entropyWeight = 5.0
 cDim1 = 512
@@ -56,13 +56,13 @@ trnBSize = 128
 labelNoiseRatio = 0.2
 saveRange= 20
 layerMethod= 'linear'
-update_cluster_head_only = False
+update_cluster_head_only = True
 updateNNTerm = 10
 normalizing = False
 useLinLayer = False
 isInputProb = False
 jointTrnBSize = 4096
-accumulNum = 1
+accumulNum = 4
 
 plotsaveName = mk_name(embedSize=embedSize,
                        numHeads = numHeads,
@@ -71,14 +71,14 @@ plotsaveName = mk_name(embedSize=embedSize,
                        labelNoiseRatio = labelNoiseRatio,
                        cDim1=cDim1,
                        layerMethod=layerMethod,
-                       headOnly = update_cluster_head_only,
+                       # headOnly = update_cluster_head_only,
                        normalizing=normalizing,
                        useLinLayer = useLinLayer,
                        isInputProb=isInputProb
                        )
 
-createDirectory(baseDir + 'dirResultImagenet50_0/' + plotsaveName)
-resultSaveDir = baseDir + 'dirResultImagenet50_0/' + plotsaveName + '/'
+createDirectory(baseDir + 'dirResultImagenet10_headOnly0/' + plotsaveName)
+resultSaveDir = baseDir + 'dirResultImagenet10_headOnly0/' + plotsaveName + '/'
 
 headSaveLoadDir = resultSaveDir+'headModels/'
 FESaveLoadDir = resultSaveDir+'FEModels/'

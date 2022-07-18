@@ -258,10 +258,10 @@ import os
 # lst = os.listdir('/home/a286/hjs_dir1/mySCAN0/')
 # for i in lst:
 #     print(i)
-with open('/home/a286/hjs_dir1/mySCAN0/SCAN_imagenets/imagenet50_PathLst.pkl','rb') as F:
+with open('/home/a286/hjs_dir1/mySCAN0/SCAN_imagenets/imagenet10_LabelDict.pkl','rb') as F:
     myDict= pickle.load(F)
 
-for i in myDict:
-    print(i)
+for i,v in myDict.items():
+    print(i,v)
 
 

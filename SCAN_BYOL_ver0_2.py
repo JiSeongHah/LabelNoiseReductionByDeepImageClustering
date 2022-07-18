@@ -61,8 +61,9 @@ updateNNTerm = 10
 normalizing = False
 useLinLayer = False
 isInputProb = False
-jointTrnBSize = 4096
-accumulNum = 1
+jointTrnBSize = 128
+accumulNum = 4
+nnNum = 50
 
 plotsaveName = mk_name(embedSize=embedSize,
                        numHeads = numHeads,
@@ -71,14 +72,13 @@ plotsaveName = mk_name(embedSize=embedSize,
                        labelNoiseRatio = labelNoiseRatio,
                        cDim1=cDim1,
                        layerMethod=layerMethod,
-                       headOnly = update_cluster_head_only,
                        normalizing=normalizing,
                        useLinLayer = useLinLayer,
                        isInputProb=isInputProb
                        )
 
-createDirectory(baseDir + 'dirResultImagenet50_0/' + plotsaveName)
-resultSaveDir = baseDir + 'dirResultImagenet50_0/' + plotsaveName + '/'
+createDirectory(baseDir + 'dirResultImagenet50_headOnly0/' + plotsaveName)
+resultSaveDir = baseDir + 'dirResultImagenet50_headOnly0/' + plotsaveName + '/'
 
 headSaveLoadDir = resultSaveDir+'headModels/'
 FESaveLoadDir = resultSaveDir+'FEModels/'
@@ -102,6 +102,7 @@ do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
              useLinLayer = useLinLayer,
              isInputProb=isInputProb,
              cDim1=cDim1,
+             nnNum=nnNum,
              numHeads = numHeads,
              layerMethod=layerMethod,
              jointTrnBSize= jointTrnBSize,

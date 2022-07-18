@@ -90,6 +90,9 @@ class doSCAN(nn.Module):
         if basemodelLoadName == 'stl10':
             self.basemodelLoadName = 'simclr_stl-10.pth.tar'
             self.dataType = basemodelLoadName
+        if basemodelLoadName == 'imagenet10':
+            self.basemodelLoadName = 'moco_v2_800ep_pretrain.pth.tar'
+            self.dataType = basemodelLoadName
         if basemodelLoadName == 'imagenet50':
             self.basemodelLoadName = 'moco_v2_800ep_pretrain.pth.tar'
             self.dataType = basemodelLoadName
@@ -118,7 +121,7 @@ class doSCAN(nn.Module):
         self.isInputProb = isInputProb
 
         self.modelType = modelType
-        if basemodelLoadName in ['imagenet50','imagenet100','imagenet200','tinyimagenet']:
+        if basemodelLoadName in ['imagenet10','imagenet50','imagenet100','imagenet200','tinyimagenet']:
             self.modelType = 'resnet50'
         self.L2NormalEnd = L2NormalEnd
         self.cDim1 = cDim1
@@ -153,7 +156,7 @@ class doSCAN(nn.Module):
         if basemodelLoadName == 'stl10':
             cfgScan = dataCfg.dataConfigs_Stl10.trans2
             self.baseTransform = dataCfg.dataConfigs_Stl10.baseTransform
-        if basemodelLoadName in ['imagenet50','imagenet100','imagenet200']:
+        if basemodelLoadName in ['imagenet10','imagenet50','imagenet100','imagenet200']:
             cfgScan = dataCfg.dataConfigs_Imagenet.trans2
             self.baseTransform = dataCfg.dataConfigs_Imagenet.baseTransform
         if basemodelLoadName == 'tinyimagenet':
@@ -348,6 +351,7 @@ class doSCAN(nn.Module):
                                        ClusterHead=self.ClusterHead,
                                        criterion=SCANLoss(entropyWeight=self.entropyWeight,
                                                           isInputProb=self.isInputProb),
+                                       accumulNum= self.accumulNum,
                                        optimizer=[self.optimizerBackbone,self.optimizerCHead],
                                        device=self.device,
                                        update_cluster_head_only=self.update_cluster_head_only)

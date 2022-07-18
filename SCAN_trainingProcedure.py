@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-def scanTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, optimizer, device, update_cluster_head_only=True):
+def scanTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, optimizer,accumulNum, device, update_cluster_head_only=True):
     """
     Train w/ SCAN-Loss
     """
@@ -50,18 +50,17 @@ def scanTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion, opt
             totalLossInnerDict,consistencyLossInnerDict,entropyLossInnerDict = criterion(anchors_output,neighbors_output)
 
             totalLoss = sum(loss for loss in totalLossInnerDict.values())
-            if update_cluster_head_only:
-                optimizer[1].zero_grad()
-            else:
-                optimizer[0].zero_grad()
-                optimizer[1].zero_grad()
 
             totalLoss.backward()
-            if update_cluster_head_only:
-                optimizer[1].step()
-            else:
-                optimizer[0].step()
-                optimizer[1].step()
+            if i%accumulNum == 0:
+                if update_cluster_head_only:
+                    optimizer[1].step()
+                    optimizer[1].zero_grad()
+                else:
+                    optimizer[0].step()
+                    optimizer[1].step()
+                    optimizer[0].zero_grad()
+                    optimizer[1].zero_grad()
 
             for h in range(headNum):
                 totalLossDict[f'head_{h}'].append(totalLossInnerDict[f'head_{h}'].cpu().item())

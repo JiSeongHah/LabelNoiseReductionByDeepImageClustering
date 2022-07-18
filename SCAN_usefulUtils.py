@@ -75,7 +75,8 @@ def getAccPerConfLst(Dict,linspaceNum,minConf=0.95):
 
 def saveImagenetPathLstAndLabelDict(baseDir):
     
-    dolst = ['imagenet50','imagenet100','imagenet200']
+    # dolst = ['imagenet10','imagenet50','imagenet100','imagenet200']
+    dolst = ['imagenet10']
 
     for eachDir in dolst:
         dir =  baseDir+eachDir
@@ -93,10 +94,7 @@ def saveImagenetPathLstAndLabelDict(baseDir):
         with open(baseDir+eachDir+'_PathLst.pkl','wb') as f:
             pickle.dump(totalPathLst,f)
 
-
-        with open(baseDir+eachDir+'.txt') as F:
-            labelLst = F.readlines()
-
+        labelLst = os.listdir(baseDir+eachDir)
 
         imagenetLabelDict= {}
         for idx,i in enumerate(labelLst):
@@ -105,6 +103,8 @@ def saveImagenetPathLstAndLabelDict(baseDir):
         with open(baseDir+eachDir+'_LabelDict.pkl','wb') as FF:
             pickle.dump(imagenetLabelDict,FF)
 
+
+# do = saveImagenetPathLstAndLabelDict(baseDir='/home/a286/hjs_dir1/mySCAN0/SCAN_imagenets/')
 
 def saveTinyImagenetPathLstAndLabelDict(baseDir):
 
