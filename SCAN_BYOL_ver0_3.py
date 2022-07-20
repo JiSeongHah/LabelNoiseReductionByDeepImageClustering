@@ -62,7 +62,7 @@ normalizing = False
 useLinLayer = False
 isInputProb = False
 jointTrnBSize = 128
-accumulNum = 4
+accumulNum = 32
 nnNum = 50
 
 plotsaveName = mk_name(embedSize=embedSize,
@@ -77,8 +77,8 @@ plotsaveName = mk_name(embedSize=embedSize,
                        isInputProb=isInputProb
                        )
 
-createDirectory(baseDir + 'dirResultImagenet50_headOnly0/' + plotsaveName)
-resultSaveDir = baseDir + 'dirResultImagenet50_headOnly0/' + plotsaveName + '/'
+createDirectory(baseDir + 'dirResultImagenet50_headOnlySimclrVer0/' + plotsaveName)
+resultSaveDir = baseDir + 'dirResultImagenet50_headOnlySimclrVer0/' + plotsaveName + '/'
 
 headSaveLoadDir = resultSaveDir+'headModels/'
 FESaveLoadDir = resultSaveDir+'FEModels/'
@@ -119,7 +119,7 @@ do.saveNearestNeighbor()
 for i in range(10000):
     do.executeTrainingHeadOnly()
     # do.executeJointTraining()
-    if i % saveRange == 0:
+    if i % saveRange == 0 and i != 0:
         do.saveHead(iteredNum=i)
         do.saveFeatureExtractor(iteredNum=i)
 

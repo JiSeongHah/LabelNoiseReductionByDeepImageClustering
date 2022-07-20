@@ -56,12 +56,12 @@ trnBSize = 128
 labelNoiseRatio = 0.2
 saveRange= 20
 layerMethod= 'linear'
-update_cluster_head_only = True
+update_cluster_head_only = False
 updateNNTerm = 10
 normalizing = False
 useLinLayer = False
 isInputProb = False
-jointTrnBSize = 4096
+jointTrnBSize = 128
 accumulNum = 4
 
 plotsaveName = mk_name(embedSize=embedSize,
@@ -77,8 +77,8 @@ plotsaveName = mk_name(embedSize=embedSize,
                        isInputProb=isInputProb
                        )
 
-createDirectory(baseDir + 'dirResultImagenet10_headOnly0/' + plotsaveName)
-resultSaveDir = baseDir + 'dirResultImagenet10_headOnly0/' + plotsaveName + '/'
+createDirectory(baseDir + 'dirResultImagenet10_headOnlyFalse1/' + plotsaveName)
+resultSaveDir = baseDir + 'dirResultImagenet10_headOnlyFalse1/' + plotsaveName + '/'
 
 headSaveLoadDir = resultSaveDir+'headModels/'
 FESaveLoadDir = resultSaveDir+'FEModels/'
@@ -118,7 +118,7 @@ do.saveNearestNeighbor()
 for i in range(10000):
     do.executeTrainingHeadOnly()
     # do.executeJointTraining()
-    if i % saveRange == 0:
+    if i % saveRange == 0 and i != 0:
         do.saveHead(iteredNum=i)
         do.saveFeatureExtractor(iteredNum=i)
 
