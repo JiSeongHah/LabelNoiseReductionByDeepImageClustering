@@ -132,3 +132,141 @@ def selflabelTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion
                 
 
     return totalLossDict4Plot
+
+
+def trainWithFiltered(train_loader, featureExtractor, ClusterHead, criterion, optimizer, device, accumulNum):
+
+    featureExtractor.train()  # Update BN
+
+    optimizer[0].zero_grad()
+    optimizer[1].zero_grad()
+    # gradientStep = len(train_loader)
+
+    totalLossLst = []
+
+
+    train_loader = tqdm(train_loader)
+    with torch.set_grad_enabled(True):
+        for i, batch in enumerate(train_loader):
+
+            images = batch['image'].to(device)
+            labels = batch['labels']
+
+            output = ClusterHead.forward(featureExtractor(images))
+
+            totalLoss = criterion(output )
+
+            train_loader.set_description(f'training {i}/{len(train_loader)}')
+            train_loader.set_postfix({'loss : ': finalLoss.item()})
+
+            totalLoss.backward()
+
+            if i % accumulNum == 0:
+                optimizer[0].step()
+                optimizer[1].step()
+                optimizer[0].zero_grad()
+                optimizer[1].zero_grad()
+
+            totalLossLst.append(totalLoss.item())
+
+    return totalLossLst
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

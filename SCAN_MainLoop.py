@@ -29,7 +29,7 @@ import pickle
 from SCAN_Transformation import get_train_transformations
 from torch.utils.data import TensorDataset
 from SCAN_CONFIG import Config
-from SCAN_DATASETS import getCustomizedDataset4SCAN
+from SCAN_DATASETS import getCustomizedDataset4SCAN,filteredDatasetNaive4SCAN
 from SCAN_trainingProcedure import scanTrain,selflabelTrain
 from SCAN_losses import SCANLoss,selfLabelLoss
 from SCAN_usefulUtils import getMinHeadIdx,getAccPerConfLst,loadPretrained4imagenet,Pseudo2Label
@@ -821,7 +821,7 @@ class doSCAN(nn.Module):
         plt.cla()
         plt.clf()
 
-    def trainWithFilteredData(self):
+    def saveFiltered(self):
 
         self.FeatureExtractorBYOL.eval()
         self.ClusterHead.eval()
@@ -909,7 +909,7 @@ class doSCAN(nn.Module):
             modelLabelPerCluster[eachCluster] = modeLabel
             # print(eachCluster,modelLabelPerCluster[eachCluster])
 
-
+        TDataLoader = tqdm(DataLoader(trainDataset, shuffle=True, batch_size=self.trnBSize, num_workers=2))
         filteredInputLst = []
         filteredPseudoLabelLst =  []
         with torch.set_grad_enabled(False):
@@ -926,12 +926,94 @@ class doSCAN(nn.Module):
 
                 confMask = clusterPredValue >= self.selfLabelThreshold
 
-                if self.dataType in ['cifar10','ciar100','stl10'] and len(fi):
-                    filteredInputLst.append(inputsRaw[confMask])
-                    filteredPseudoLabelLst.append(Pseudo2Label(modelLabelPerCluster,clusterPred)[confMask])
-                else:
-                    filteredInputLst.append(inputsIndices[confMask])
-                    filteredPseudoLabelLst.append(Pseudo2Label(modelLabelPerCluster, clusterPred)[confMask])
+                filteredInputLst.append(inputsIndices[confMask])
+                filteredPseudoLabelLst.append(Pseudo2Label(modelLabelPerCluster, clusterPred)[confMask])
+
+        filteredInputLst = torch.cat(filteredInputLst)
+        filteredPseudoLabelLst = torch.cat(filteredPseudoLabelLst)
+
+        print(f'size of filtered input is : {filteredInputLst.size()}')
+        print(f'size of filtered pseudo label is : {filteredPseudoLabelLst.size()}')
+
+        finalDict = {
+            'inputIndices' : filteredInputLst,
+            'pseudoLabels' : filteredPseudoLabelLst
+        }
+
+        with open(self.plotSaveDir+'filteredData.pkl','wb') as F:
+            pickle.dump(finalDict,F)
+
+        print('saving confident data indices and label complete ')
+
+    def loadModel4filtered(self):
+
+        self.FeatureExtractorBYOL.to('cpu')
+        self.ClusterHead.to('cpu')
+
+        self.FeatureExtractor4FTed = callAnyResnet(modelType=self.modelType,
+                                                      numClass=self.embedSize,
+                                                      normalizing=False,
+                                                      useLinLayer=False,
+                                                      )
+
+
+        print(f'loading {self.FTedFESaveLoadDir} {self.FTedFELoadNum}.pt')
+        modelStateDict = torch.load(self.FTedFESaveLoadDir + str(self.FTedFELoadNum) + '.pt')
+        missing = self.FeatureExtractor4FTed.load_state_dict(modelStateDict)
+        print(f'missing : ', set(missing[1]))
+        # assert (set(missing[1]) == {
+        #     'contrastive_head.0.weight', 'contrastive_head.0.bias',
+        #     'contrastive_head.2.weight', 'contrastive_head.2.bias'}
+        #         or set(missing[1]) == {
+        #             'contrastive_head.weight', 'contrastive_head.bias'})
+        print(f'loading {self.FTedFESaveLoadDir}{self.FTedFELoadNum}.pt complete successfully!~!')
+
+
+        self.ClusterHead = myMultiCluster4SCAN(inputDim=self.embedSize,
+                                               dim1=self.cDim1,
+                                               nClusters=self.clusterNum,
+                                               numHead=self.numHeads,
+                                               isOutputProb=self.isInputProb,
+                                               layerMethod=self.layerMethod)
+
+        headLoadedDict = torch.load(self.headSaveLoadDir + str(self.headLoadNum) + '.pt')
+        self.ClusterHead.load_state_dict(headLoadedDict)
+        print(f'loading saved head : {str(self.headLoadNum)}.pt complete!!!!!!!')
+
+
+def trainFilteredDataNaiveVer(self):
+
+
+
+        trainDataset = filteredDatasetNaive4SCAN(downDir=self.downDir,
+                                                 savedIndicesDir = self.plotSaveDir,
+                                                 dataType=self.dataType,
+                                                 transform= self.baseTransform
+                                                 )
+
+        trainDataloader = DataLoader(trainDataset, shuffle=True, batch_size=self.jointTrnBSize, num_workers=2)
+
+        self.ClusterHead.train()
+        for iter in range(iterNum):
+            print(f'{iter}/{iterNum} training Start...')
+            totalLossDict = trainWithFiltered(train_loader=trainDataloader,
+                                           featureExtractor=self.FeatureExtractorBYOL,
+                                           headNum=self.numHeads,
+                                           ClusterHead=self.ClusterHead,
+                                           criterion=selfLabelLoss(selfLabelThreshold=self.selfLabelThreshold,
+                                                                   isInputProb=self.isInputProb),
+                                           optimizer=[self.optimizerBackbone, self.optimizerCHead],
+                                           device=self.device,
+                                           accumulNum=self.accumulNum,
+                                           update_cluster_head_only=self.update_cluster_head_only)
+
+            for h in range(self.numHeads):
+                self.jointTrainingLossDictPerHead[f'head_{h}'].append(np.mean(totalLossDict[f'head_{h}']))
+
+            print(f'{iter}/{iterNum} training Complete !!!')
+
+        self.ClusterHead.eval()
+
 
 
 

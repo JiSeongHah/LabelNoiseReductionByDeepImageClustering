@@ -115,12 +115,13 @@ do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
 
 # do.checkConfidence()
 # do.saveNearestNeighbor()
-for i in range(10000):
-    # do.executeTrainingHeadOnly()
-    do.executeJointTraining()
-    if i % saveRange == 0 and i != 0:
-        do.saveHead(iteredNum=i)
-        do.saveFeatureExtractor(iteredNum=i)
+do.saveFiltered()
+# for i in range(10000):
+#     # do.executeTrainingHeadOnly()
+#     do.executeJointTraining()
+#     if i % saveRange == 0 and i != 0:
+#         do.saveHead(iteredNum=i)
+#         do.saveFeatureExtractor(iteredNum=i)
 
     # if i % updateNNTerm == 0:
     #     do.saveNearestNeighbor()

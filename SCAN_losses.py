@@ -20,7 +20,7 @@ class MaskedCELoss(nn.Module):
 
 
 class ConfidenceBasedCE(nn.Module):
-    def __init__(self, threshold,isInputProb, weight4CE=False):
+    def __init__(self, threshold,isInputProb, weight4CE=True):
         super(ConfidenceBasedCE, self).__init__()
         self.loss = MaskedCELoss()
         self.softmax = nn.Softmax(dim=1)
@@ -160,3 +160,36 @@ class selfLabelLoss(nn.Module):
             totalLossDict[f'head_{h}'] = loss
 
         return totalLossDict
+
+class FocalLoss(nn.modules.loss._WeightedLoss):
+    def __init__(self, weight=None, gamma=2,reduction='mean'):
+        super(FocalLoss, self).__init__(weight,reduction=reduction)
+        self.gamma = gamma
+        self.weight = weight #weight parameter will act as the alpha parameter to balance class weights
+
+        self.crossEntropy = nn.CrossEntropyLoss()
+
+    def forward(self, inputs, labels):
+
+        ceLoss = self.crossEntropy(inputs, labels,reduction=self.reduction,weight=self.weight)
+        pt = torch.exp(-ce_loss)
+        focalLoss = ((1 - pt) ** self.gamma * ceLoss).mean()
+
+        return focalLoss
+
+class filteredDataLoss(nn.Module):
+    def __init__(self,isFocal=False):
+        super(filteredDataLoss, self).__init__()
+
+        if isFocal == True:
+            self.lossMethod = FocalLoss()
+        else:
+            self.lossMethod == nn.CrossEntropyLoss()
+
+    def forward(self, inputs, labels):
+
+        return self.lossMethod(inputs,labels)
+
+
+
+

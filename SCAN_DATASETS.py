@@ -205,6 +205,113 @@ class baseDataset4SCAN(Dataset):
             img = self.resize(img)
             return
 
+
+class filteredDatasetNaive4SCAN(Dataset):
+    def __init__(self,
+                 downDir,
+                 savedIndicesDir,
+                 dataType,
+                 transform
+                 ):
+        super(filteredDatasetNaive4SCAN, self).__init__()
+
+        self.downDir = downDir
+        self.savedIndicesDir = savedIndicesDir
+        self.dataType = dataType
+        self.transform = transform
+
+        if dataType == 'cifar10':
+            preDataset = CIFAR10(root=downDir, train=True, download=True)
+            self.dataInput = preDataset.data
+            self.dataLabel = preDataset.targets
+        if dataType == 'cifar100':
+            preDataset = CIFAR100(root=downDir, train=True, download=True)
+            self.dataInput = preDataset.data
+            self.dataLabel = preDataset.targets
+        if dataType == 'stl10':
+            preDataset = STL10(root=downDir, split='train', download=True)
+            self.dataInput = preDataset.data
+            self.dataLabel = preDataset.labels
+
+        with open(self.savedIndicesDir+'filteredData.pkl','rb') as F:
+            self.dataIndices = pickle.load(F)
+
+        if dataType in ['imagenet10', 'imagenet50', 'imagenet100', 'imagenet200', 'tinyImagenet']:
+            with open(self.downDir + f'SCAN_imagenets/{dataType}_PathLst.pkl', 'rb') as F:
+                self.PathLst = pickle.load(F)
+
+            with open(self.downDir + f'SCAN_imagenets/{dataType}_LabelDict.pkl', 'rb') as F:
+                self.labelDict = pickle.load(F)
+
+            self.resize = transforms.Resize((256, 256))
+
+    def __len__(self):
+
+        return len(self.dataIndices['inputIndices'])
+
+    def __getitem__(self, idx):
+
+        if self.dataType == 'cifar10' or \
+                self.dataType == 'cifar100' or \
+                self.dataType == 'stl10':
+
+            img, label = self.dataInput[self.dataIndices['inputIndices'][idx]], self.dataIndices['pseudoLabels'][idx]
+
+            # if self.dataType == 'cifar100':
+            #     label = _cifar100_to_cifar20(label)
+
+            img_size = (img.shape[0], img.shape[1])
+
+            if self.dataType == 'stl10':
+                img = Image.fromarray(np.transpose(img, (1, 2, 0)))
+                img_size = img.size
+            if self.dataType == 'cifar10':
+                img = Image.fromarray(img)
+            if self.dataType == 'cifar100':
+                img = Image.fromarray(img)
+
+            if self.transform is not None:
+                img = self.transform(img)
+
+            out = {'image': img, 'label': label, 'meta': {'img_size': img_size, 'index': idx}}
+
+            return out
+
+        else:
+            path = self.PathLst[self.dataIndices['inputIndices'][idx]]
+            label = self.dataIndices['pseudoLabels'][idx]
+
+            with open(path, 'rb') as f:
+                img = Image.open(f).convert('RGB')
+            img_size = img.size
+
+            img = self.resize(img)
+
+            if self.transform is not None:
+                img = self.transform(img)
+
+            out = {'image': img, 'label': label, 'meta': {'img_size': img_size, 'index': idx}}
+
+            return out
+
+    def get_image(self, index):
+        if self.dataType == 'cifar10' or \
+                self.dataType == 'cifar100' or \
+                self.dataType == 'stl10':
+
+            img = self.data[index]
+            return
+        else:
+            path = self.PathLst[idx]
+            label = self.labelDict[path.split('/')[-2]]
+
+            with open(path, 'rb') as f:
+                img = Image.open(f).convert('RGB')
+            img_size = img.size
+            img = self.resize(img)
+            return
+
+
 def getCustomizedDataset4SCAN(downDir,dataType,transform,nnNum=None,indices=None,toAgumentedDataset=False,toNeighborDataset=False,baseVer=False):
 
     dataset = baseDataset4SCAN(downDir=downDir,dataType=dataType,transform=transform)
