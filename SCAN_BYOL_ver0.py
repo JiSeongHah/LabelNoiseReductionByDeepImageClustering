@@ -45,8 +45,8 @@ basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
 basemodelLoadName = 'imagenet10'
-headLoadNum = 0
-FELoadNum = 0
+headLoadNum = 60
+FELoadNum = 60
 embedSize = 2048
 clusterNum = 10
 numHeads = 10
@@ -62,7 +62,7 @@ normalizing = False
 useLinLayer = False
 isInputProb = False
 jointTrnBSize = 128
-accumulNum = 4
+accumulNum = 8
 
 plotsaveName = mk_name(embedSize=embedSize,
                        numHeads = numHeads,
@@ -114,10 +114,10 @@ do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
 
 
 # do.checkConfidence()
-do.saveNearestNeighbor()
+# do.saveNearestNeighbor()
 for i in range(10000):
-    do.executeTrainingHeadOnly()
-    # do.executeJointTraining()
+    # do.executeTrainingHeadOnly()
+    do.executeJointTraining()
     if i % saveRange == 0 and i != 0:
         do.saveHead(iteredNum=i)
         do.saveFeatureExtractor(iteredNum=i)

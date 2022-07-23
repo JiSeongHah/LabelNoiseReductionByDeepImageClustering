@@ -252,16 +252,140 @@ from collections import OrderedDict
 # print(model(x).size())
 
 
-import pickle
-import os
+# import pickle
+# import os
+#
+# # lst = os.listdir('/home/a286/hjs_dir1/mySCAN0/')
+# # for i in lst:
+# #     print(i)
+# with open('/home/a286/hjs_dir1/mySCAN0/SCAN_imagenets/imagenet10_LabelDict.pkl','rb') as F:
+#     myDict= pickle.load(F)
+#
+# for i,v in myDict.items():
+#     print(i,v)
 
-# lst = os.listdir('/home/a286/hjs_dir1/mySCAN0/')
-# for i in lst:
-#     print(i)
-with open('/home/a286/hjs_dir1/mySCAN0/SCAN_imagenets/imagenet10_LabelDict.pkl','rb') as F:
-    myDict= pickle.load(F)
 
-for i,v in myDict.items():
-    print(i,v)
+
+from torchvision.datasets import CIFAR10
+from torch.utils.data import DataLoader
+from torchvision import transforms
+
+
+dt = CIFAR10(root='~/',train=True,download=True,transform=transforms.ToTensor())
+
+print(dt.__getitem__(31))
+
+
+# ds = DataLoader(dt, batch_size=32,shuffle=True,num_workers=2)
+#
+# for idx,i in enumerate(ds):
+#     print(i[1].size())
+# for idx,i in enumerate(ds):
+#     print(idx)
+
+
+
+
+
+
+import torch
+from SCAN_usefulUtils import Pseudo2Label
+
+#
+#
+# x = torch.randint(0,5,(5,))
+#
+# print(x)
+#
+# mask = torch.randint(0,2,(5,)) ==1
+# print(mask)
+#
+# print(x[mask])
+
+
+
+dic = {
+    0:0,
+    1:1,
+    2:2
+}
+
+inputs = torch.randint(0,3,(5,))
+print(inputs,111)
+labels = Pseudo2Label(dic,inputs)
+print(labels,222)
+
+
+x = torch.argmax(torch.randn(3,2))
+print(x.type())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

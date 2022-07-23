@@ -45,8 +45,8 @@ basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
 basemodelLoadName = 'imagenet50'
-headLoadNum = 0
-FELoadNum = 0
+headLoadNum = 40
+FELoadNum = 40
 embedSize = 2048
 clusterNum = 50
 numHeads = 10
@@ -115,7 +115,7 @@ do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
 
 
 # do.checkConfidence()
-do.saveNearestNeighbor()
+# do.saveNearestNeighbor()
 for i in range(10000):
     do.executeTrainingHeadOnly()
     # do.executeJointTraining()

@@ -169,7 +169,6 @@ class baseDataset4SCAN(Dataset):
             return out
 
         else:
-
             path = self.PathLst[idx]
             label = self.labelDict[path.split('/')[-2]]
 
@@ -182,8 +181,6 @@ class baseDataset4SCAN(Dataset):
 
             if self.transform is not None:
                 img = self.transform(img)
-
-
 
             out = {'image': img, 'label': label, 'meta': {'img_size': img_size, 'index': idx}}
 

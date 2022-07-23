@@ -2,7 +2,7 @@ import os
 import numpy as np
 from scipy.stats import mode
 import pickle
-
+import torch
 
 def getMinHeadIdx(loadDir):
 
@@ -162,6 +162,18 @@ def loadPretrained4imagenet(baseLoadDir,model):
                 'contrastive_head.weight', 'contrastive_head.bias'})
     return model
 
+
+def Pseudo2Label(dictionary,inputTensor):
+
+    results = []
+
+    for i in inputTensor:
+        result = dictionary[i.item()]
+        results.append(result)
+
+    results = torch.tensor(results)
+
+    return results
 
 
 

@@ -32,7 +32,7 @@ from SCAN_CONFIG import Config
 from SCAN_DATASETS import getCustomizedDataset4SCAN
 from SCAN_trainingProcedure import scanTrain,selflabelTrain
 from SCAN_losses import SCANLoss,selfLabelLoss
-from SCAN_usefulUtils import getMinHeadIdx,getAccPerConfLst,loadPretrained4imagenet
+from SCAN_usefulUtils import getMinHeadIdx,getAccPerConfLst,loadPretrained4imagenet,Pseudo2Label
 import faiss
 
 
@@ -822,7 +822,128 @@ class doSCAN(nn.Module):
         plt.clf()
 
     def trainWithFilteredData(self):
-        pass
+
+        self.FeatureExtractorBYOL.eval()
+        self.ClusterHead.eval()
+
+        self.minHeadIdx = getMinHeadIdx(self.plotSaveDir)
+        print(f'self.minHeadIdx is : {self.minHeadIdx}')
+        trainDataset = getCustomizedDataset4SCAN(downDir=self.downDir,
+                                                 dataType=self.dataType,
+                                                 transform=self.baseTransform,
+                                                 baseVer=True)
+        TDataLoader = tqdm(DataLoader(trainDataset, shuffle=True, batch_size=self.trnBSize, num_workers=2))
+
+        clusterPredResult = []
+        clusterPredValueResult = []
+        gtLabelResult = []
+        # predict cluster for each inputs
+        with torch.set_grad_enabled(False):
+            for idx, loadedBatch in enumerate(TDataLoader):
+                inputsRaw = loadedBatch['image'].float()
+                embededInput = self.FeatureExtractorBYOL(inputsRaw.to(self.device))
+                clusterProb = self.ClusterHead.forwardWithMinLossHead(embededInput,
+                                                                      headIdxWithMinLoss=self.minHeadIdx).cpu()
+
+                clusterPred = torch.argmax(clusterProb, dim=1)
+                clusterPredValue = torch.max(clusterProb, dim=1).values.cpu()
+
+                clusterPredResult.append(clusterPred)
+                clusterPredValueResult.append(clusterPredValue)
+                gtLabelResult.append(loadedBatch['label'])
+
+                # time.sleep(5)
+
+        # result of prediction for each inputs
+        clusterPredResult = torch.cat(clusterPredResult)
+        for eachClusterUnique in torch.unique(clusterPredResult):
+            print(
+                f' {torch.count_nonzero(clusterPredResult == eachClusterUnique)} allocated for cluster :{eachClusterUnique}'
+                f'when validating')
+
+        clusterPredValueResult = torch.cat(clusterPredValueResult)
+
+        # ground truth label for each inputs
+        gtLabelResult = torch.cat(gtLabelResult).unsqueeze(1)
+        print(f'size of gtLabelResult is : {gtLabelResult.size()}')
+        # print(f'clusterPred has size : {clusterPredResult.size()} , gtLabelResult has size : {gtLabelResult.size()}')
+
+        ################################# make noised label with ratio ###############################
+        ################################# make noised label with ratio ###############################
+        minGtLabel = torch.min(torch.unique(gtLabelResult))
+        maxGtLabel = torch.max(torch.unique(gtLabelResult))
+
+        # noisedLabels : var for total labels with noised label
+        noisedLabels = []
+        # noisedLabels4AccCheck : var for checking accruacy of head, contains noised label only
+        noisedLabels4AccCheck = []
+        # noiseInserTerm : for this term, noised label is inserted into total labels
+        noiseInsertTerm = int(1 / self.labelNoiseRatio)
+        print(f'noiseInserTerm is : {noiseInsertTerm}')
+        for idx, (eachClusterPred, eachGtLabel, eachClusterPredValue) in enumerate(zip(clusterPredResult,
+                                                                                       gtLabelResult,
+                                                                                       clusterPredValueResult)):
+            if idx % noiseInsertTerm == 0:
+                noisedLabels.append(torch.randint(minGtLabel.cpu(),
+                                                  maxGtLabel + 1, (1,)))
+                noisedLabels4AccCheck.append([eachClusterPred.cpu(),
+                                              eachGtLabel.cpu(),
+                                              torch.randint(minGtLabel, maxGtLabel + 1, (1,)),
+                                              eachClusterPredValue])
+            else:
+                noisedLabels.append(eachGtLabel)
+                noisedLabels4AccCheck.append([eachClusterPred.cpu(),
+                                              eachGtLabel.cpu(),
+                                              torch.randint(minGtLabel, maxGtLabel + 1, (1,)),
+                                              eachClusterPredValue])
+        noisedLabels = torch.cat(noisedLabels)
+        ################################# make noised label with ratio ###############################
+        ################################# make noised label with ratio ###############################
+
+        # dict containing which labels is mode in each cluster
+        modelLabelPerCluster = dict()
+        for eachCluster in range(self.clusterNum):
+            sameClusterIdx = clusterPredResult == eachCluster
+            # print(torch.sum(sameClusterIdx.float()))
+            modeLabel = torch.mode(noisedLabels[sameClusterIdx]).values
+            modelLabelPerCluster[eachCluster] = modeLabel
+            # print(eachCluster,modelLabelPerCluster[eachCluster])
+
+
+        filteredInputLst = []
+        filteredPseudoLabelLst =  []
+        with torch.set_grad_enabled(False):
+            for idx, loadedBatch in enumerate(TDataLoader):
+                inputsRaw = loadedBatch['image'].float()
+                if self.dataType not in ['cifar10','ciar100','stl10']:
+                    inputsIndices = loadedBatch['meta']['index']
+
+                embededInput = self.FeatureExtractorBYOL(inputsRaw.to(self.device))
+                clusterProb = self.ClusterHead.forwardWithMinLossHead(embededInput,
+                                                                      headIdxWithMinLoss=self.minHeadIdx).cpu()
+                clusterPred = torch.argmax(clusterProb, dim=1)
+                clusterPredValue = torch.max(clusterProb, dim=1).values.cpu()
+
+                confMask = clusterPredValue >= self.selfLabelThreshold
+
+                if self.dataType in ['cifar10','ciar100','stl10'] and len(fi):
+                    filteredInputLst.append(inputsRaw[confMask])
+                    filteredPseudoLabelLst.append(Pseudo2Label(modelLabelPerCluster,clusterPred)[confMask])
+                else:
+                    filteredInputLst.append(inputsIndices[confMask])
+                    filteredPseudoLabelLst.append(Pseudo2Label(modelLabelPerCluster, clusterPred)[confMask])
+
+
+
+
+                
+                
+
+
+
+
+        
+
 
 
 
