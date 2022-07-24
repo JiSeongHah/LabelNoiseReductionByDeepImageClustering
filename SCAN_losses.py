@@ -188,7 +188,27 @@ class filteredDataLoss(nn.Module):
 
     def forward(self, inputs, labels):
 
-        return self.lossMethod(inputs,labels)
+        loss = self.lossMethod(inputs,labels)
+
+        acc = torch.mean((torch.argmax(inputs,dim=1) == labels).float())
+
+        return loss,acc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

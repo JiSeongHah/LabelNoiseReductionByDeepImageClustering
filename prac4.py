@@ -302,23 +302,28 @@ from SCAN_usefulUtils import Pseudo2Label
 #
 # print(x[mask])
 
+x = torch.randint(0,2,(10,))
+y = torch.randint(0,2,(10,))
+
+print(torch.mean((x==y).float()))
 
 
-dic = {
-    0:0,
-    1:1,
-    2:2
-}
 
-inputs = torch.randint(0,3,(5,))
-print(inputs,111)
-labels = Pseudo2Label(dic,inputs)
-print(labels,222)
-
-
-x = torch.argmax(torch.randn(3,2))
-print(x.type())
-
+# dic = {
+#     0:0,
+#     1:1,
+#     2:2
+# }
+#
+# inputs = torch.randint(0,3,(5,))
+# print(inputs,111)
+# labels = Pseudo2Label(dic,inputs)
+# print(labels,222)
+#
+#
+# x = torch.argmax(torch.randn(3,2))
+# print(x.type())
+#
 
 
 

@@ -143,7 +143,7 @@ def trainWithFiltered(train_loader, featureExtractor, ClusterHead, criterion, op
     # gradientStep = len(train_loader)
 
     totalLossLst = []
-
+    totalAccLst = []
 
     train_loader = tqdm(train_loader)
     with torch.set_grad_enabled(True):
@@ -154,7 +154,7 @@ def trainWithFiltered(train_loader, featureExtractor, ClusterHead, criterion, op
 
             output = ClusterHead.forward(featureExtractor(images))
 
-            totalLoss = criterion(output )
+            totalLoss ,acc = criterion(output,labels)
 
             train_loader.set_description(f'training {i}/{len(train_loader)}')
             train_loader.set_postfix({'loss : ': finalLoss.item()})
@@ -168,8 +168,9 @@ def trainWithFiltered(train_loader, featureExtractor, ClusterHead, criterion, op
                 optimizer[1].zero_grad()
 
             totalLossLst.append(totalLoss.item())
+            totalAccLst.append(acc)
 
-    return totalLossLst
+    return totalLossLst, totalAccLst
 
 
 

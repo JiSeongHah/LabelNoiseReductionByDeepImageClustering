@@ -7,7 +7,7 @@ from torchvision.datasets import CIFAR10
 from torch.utils.data import DataLoader
 from torchvision import models
 from torch.optim import AdamW, Adam, SGD
-from MY_MODELS import ResNet, BasicBlock, Bottleneck, callAnyResnet, myCluster4SCAN, myMultiCluster4SCAN
+from MY_MODELS import ResNet, BasicBlock, Bottleneck, callAnyResnet, myCluster4SCAN, myMultiCluster4SCAN,myPredictorHead
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -31,7 +31,7 @@ from torch.utils.data import TensorDataset
 from SCAN_CONFIG import Config
 from SCAN_DATASETS import getCustomizedDataset4SCAN,filteredDatasetNaive4SCAN
 from SCAN_trainingProcedure import scanTrain,selflabelTrain
-from SCAN_losses import SCANLoss,selfLabelLoss
+from SCAN_losses import SCANLoss,selfLabelLoss,filteredDataLoss
 from SCAN_usefulUtils import getMinHeadIdx,getAccPerConfLst,loadPretrained4imagenet,Pseudo2Label
 import faiss
 
@@ -292,10 +292,10 @@ class doSCAN(nn.Module):
         for h in range(self.numHeads):
             self.jointTrainingLossDictPerHead[f'head_{h}'] = []
 
+    def saveNearestNeighbor(self):
+
         self.FeatureExtractorBYOL.to(self.device)
         self.ClusterHead.to(self.device)
-
-    def saveNearestNeighbor(self):
 
         dataset4kNN = getCustomizedDataset4SCAN(downDir=self.downDir,
                                                 dataType=self.dataType,
@@ -327,7 +327,14 @@ class doSCAN(nn.Module):
         np.save(self.NNSaveDir+'NNs.npy',indices)
         print('saving index of nearest neighbors complete')
 
+        self.FeatureExtractorBYOL.to('cpu')
+        self.ClusterHead.to('cpu')
+
     def trainHeadOnly(self,iterNum):
+
+        self.FeatureExtractorBYOL.to(self.device)
+        self.ClusterHead.to(self.device)
+
         self.FeatureExtractorBYOL.eval()
 
         indices = np.load(self.NNSaveDir+'NNs.npy')
@@ -364,7 +371,13 @@ class doSCAN(nn.Module):
 
         self.ClusterHead.eval()
 
+        self.FeatureExtractorBYOL.to('cpu')
+        self.ClusterHead.to('cpu')
+
     def valHeadOnly(self):
+
+        self.FeatureExtractorBYOL.to(self.device)
+        self.ClusterHead.to(self.device)
 
         self.FeatureExtractorBYOL.eval()
         self.ClusterHead.eval()
@@ -466,6 +479,9 @@ class doSCAN(nn.Module):
               f'not OK is : {np.sum(np.array(accCheck) == 0)} with '
               f'length of data : {len(accCheck)}')
 
+        self.FeatureExtractorBYOL.to('cpu')
+        self.ClusterHead.to('cpu')
+
     def valHeadOnlyEnd(self):
 
         self.headOnlyConsisLossLstAvg.append(np.mean(self.clusterOnlyClusteringLossDictPerHead[f'head_{self.minHeadIdx}']))
@@ -517,6 +533,9 @@ class doSCAN(nn.Module):
 
     def trainJointly(self,iterNum=1):
 
+        self.FeatureExtractorBYOL.to(self.device)
+        self.ClusterHead.to(self.device)
+
         trainDataset = getCustomizedDataset4SCAN(downDir=self.downDir,
                                                  dataType=self.dataType,
                                                  transform={'standard':self.baseTransform,
@@ -547,7 +566,14 @@ class doSCAN(nn.Module):
 
         self.ClusterHead.eval()
 
+        self.FeatureExtractorBYOL.to('cpu')
+        self.ClusterHead.to('cpu')
+
     def jointVal(self):
+
+        self.FeatureExtractorBYOL.to(self.device)
+        self.ClusterHead.to(self.device)
+
         self.FeatureExtractorBYOL.eval()
         self.ClusterHead.eval()
 
@@ -646,6 +672,9 @@ class doSCAN(nn.Module):
               f'not OK is : {np.sum(np.array(accCheck) == 0)} with '
               f'length of data : {len(accCheck)}')
 
+        self.FeatureExtractorBYOL.to('cpu')
+        self.ClusterHead.to('cpu')
+
     def jointValEnd(self):
 
         self.jointTrainingLossLstAvg.append(
@@ -699,6 +728,10 @@ class doSCAN(nn.Module):
 
 
     def checkConfidence(self):
+
+        self.FeatureExtractorBYOL.to(self.device)
+        self.ClusterHead.to(self.device)
+
 
         self.FeatureExtractorBYOL.eval()
         self.ClusterHead.eval()
@@ -821,7 +854,13 @@ class doSCAN(nn.Module):
         plt.cla()
         plt.clf()
 
+        self.FeatureExtractorBYOL.to('cpu')
+        self.ClusterHead.to('cpu')
+
     def saveFiltered(self):
+
+        self.FeatureExtractorBYOL.to(self.device)
+        self.ClusterHead.to(self.device)
 
         self.FeatureExtractorBYOL.eval()
         self.ClusterHead.eval()
@@ -945,10 +984,15 @@ class doSCAN(nn.Module):
 
         print('saving confident data indices and label complete ')
 
-    def loadModel4filtered(self):
+        self.FeatureExtractorBYOL.to('cpu')
+        self.ClusterHead.to('cpu')
+
+    def loadModel4filtered(self,nclass):
 
         self.FeatureExtractorBYOL.to('cpu')
         self.ClusterHead.to('cpu')
+
+        self.nClass =nclass
 
         self.FeatureExtractor4FTed = callAnyResnet(modelType=self.modelType,
                                                       numClass=self.embedSize,
@@ -969,21 +1013,30 @@ class doSCAN(nn.Module):
         print(f'loading {self.FTedFESaveLoadDir}{self.FTedFELoadNum}.pt complete successfully!~!')
 
 
-        self.ClusterHead = myMultiCluster4SCAN(inputDim=self.embedSize,
-                                               dim1=self.cDim1,
-                                               nClusters=self.clusterNum,
-                                               numHead=self.numHeads,
-                                               isOutputProb=self.isInputProb,
-                                               layerMethod=self.layerMethod)
+        self.ClusterHeadFTed = myPredictorHead(inputDim=self.embedSize,
+                                           dim1=self.cDim1,
+                                           nClass=self.nClass)
 
-        headLoadedDict = torch.load(self.headSaveLoadDir + str(self.headLoadNum) + '.pt')
-        self.ClusterHead.load_state_dict(headLoadedDict)
-        print(f'loading saved head : {str(self.headLoadNum)}.pt complete!!!!!!!')
+        headLoadedDict = torch.load(self.FTedheadSaveLoadDir + str(self.FTedheadLoadNum) + '.pt')
+        self.ClusterHeadFTed.load_state_dict(headLoadedDict)
+        print(f'loading saved head : {str(self.FTedheadLoadNum)}.pt complete!!!!!!!')
+
+        self.optimizerBackboneFTed = Adam(self.FeatureExtractor4FTed.parameters(),
+                                      lr=self.lr,
+                                      weight_decay=self.wDecay)
+
+        self.optimizerCHeadFTed = Adam(self.ClusterHeadFTed.parameters(),
+                                   lr=self.lr,
+                                   weight_decay=self.wDecay)
+
+        self.ftedTrainLossLst = []
+        self.fiedTrainAccLst = []
 
 
-def trainFilteredDataNaiveVer(self):
+    def trainFilteredDataNaiveVer(self):
 
-
+        self.FeatureExtractor4FTed.to(self.device)
+        self.ClusterHeadFTed.to(self.device)
 
         trainDataset = filteredDatasetNaive4SCAN(downDir=self.downDir,
                                                  savedIndicesDir = self.plotSaveDir,
@@ -993,26 +1046,159 @@ def trainFilteredDataNaiveVer(self):
 
         trainDataloader = DataLoader(trainDataset, shuffle=True, batch_size=self.jointTrnBSize, num_workers=2)
 
-        self.ClusterHead.train()
+        self.ClusterHeadFTed.train()
         for iter in range(iterNum):
             print(f'{iter}/{iterNum} training Start...')
-            totalLossDict = trainWithFiltered(train_loader=trainDataloader,
-                                           featureExtractor=self.FeatureExtractorBYOL,
-                                           headNum=self.numHeads,
-                                           ClusterHead=self.ClusterHead,
-                                           criterion=selfLabelLoss(selfLabelThreshold=self.selfLabelThreshold,
-                                                                   isInputProb=self.isInputProb),
-                                           optimizer=[self.optimizerBackbone, self.optimizerCHead],
-                                           device=self.device,
-                                           accumulNum=self.accumulNum,
-                                           update_cluster_head_only=self.update_cluster_head_only)
+            totalLossLst,totalAccLst = trainWithFiltered(train_loader=trainDataloader,
+                                                         featureExtractor=self.FeatureExtractor4FTed,
+                                                         ClusterHead=self.ClusterHeadFTed,
+                                                         criterion=filteredDataLoss(),
+                                                         optimizer=[self.optimizerBackboneFTed, self.optimizerCHeadFTed],
+                                                         device=self.device,
+                                                         accumulNum=self.accumulNum
+                                                         )
 
-            for h in range(self.numHeads):
-                self.jointTrainingLossDictPerHead[f'head_{h}'].append(np.mean(totalLossDict[f'head_{h}']))
+            self.ftedTrainLossLst.append(np.mean(totalLossLst))
+            self.fiedTrainAccLst.append(np.mean(totalAccLst))
 
             print(f'{iter}/{iterNum} training Complete !!!')
 
-        self.ClusterHead.eval()
+        self.ClusterHeadFTed.eval()
+
+        self.FeatureExtractor4FTed.to('cpu')
+        self.ClusterHeadFTed.to('cpu')
+
+    def valFilteredDataNaiveVer(self):
+
+        self.FeatureExtractor4FTed.to(self.device)
+        self.ClusterHeadFTed.to(self.device)
+
+        self.FeatureExtractor4FTed.eval()
+        self.ClusterHeadFTed.eval()
+
+        trainDataset = getCustomizedDataset4SCAN(downDir=self.downDir,
+                                                 dataType=self.dataType,
+                                                 transform=self.baseTransform,
+                                                 baseVer=True)
+
+        TDataLoader = tqdm(DataLoader(trainDataset, shuffle=True, batch_size=self.trnBSize, num_workers=2))
+
+        labelPredResult = []
+        gtLabelResult = []
+        # predict cluster for each inputs
+        with torch.set_grad_enabled(False):
+            for idx, loadedBatch in enumerate(TDataLoader):
+                inputsRaw = loadedBatch['image'].float()
+                embededInput = self.FeatureExtractor4FTed(inputsRaw.to(self.device))
+                labelProb = self.ClusterHeadFTed(embededInput)
+                labelPred = torch.argmax(labelProb, dim=1).cpu()
+
+                # print(f'clusterPred hase unique ele : {torch.unique(clusterPred)}')
+                labelPredResult.append(labelPred)
+                gtLabelResult.append(loadedBatch['label'])
+
+        # result of prediction for each inputs
+        labelPredResult = torch.cat(labelPredResult)
+        for eachLabelUnique in torch.unique(labelPredResult):
+            print(
+                f' {torch.count_nonzero(labelPredResult == eachLabelUnique)} '
+                f'allocated for cluster :{eachLabelUnique}'
+                f'when validating')
+
+        # ground truth label for each inputs
+        gtLabelResult = torch.cat(gtLabelResult).unsqueeze(1)
+
+        assert gtLabelResult.size() == labelPredResult.size()
+        print(f'size of gtLabelResult is : {gtLabelResult.size()}')
+        # print(f'clusterPred has size : {clusterPredResult.size()} , gtLabelResult has size : {gtLabelResult.size()}')
+
+        ################################# make noised label with ratio ###############################
+        ################################# make noised label with ratio ###############################
+        minGtLabel = torch.min(torch.unique(gtLabelResult))
+        maxGtLabel = torch.max(torch.unique(gtLabelResult))
+
+        # noisedLabels : var for total labels with noised label
+        noisedLabels = []
+        # noisedLabels4AccCheck : var for checking accruacy of head, contains noised label only
+        noisedLabels4AccCheck = []
+        # noiseInserTerm : for this term, noised label is inserted into total labels
+        noiseInsertTerm = int(1 / self.labelNoiseRatio)
+        print(f'noiseInserTerm is : {noiseInsertTerm}')
+        for idx, (eachLabelPred, eachGtLabel) in enumerate(zip(labelPredResult, gtLabelResult)):
+            if idx % noiseInsertTerm == 0:
+
+                noisedLabelMade = torch.randint(minGtLabel.cpu(),
+                                                  maxGtLabel + 1, (1,))
+                noisedLabels.append(noisedLabelMade)
+                noisedLabels4AccCheck.append([eachLabelPred.cpu(),
+                                              eachGtLabel.cpu(),
+                                              ])
+            else:
+                noisedLabels.append(eachGtLabel)
+        noisedLabels = torch.cat(noisedLabels)
+        print(f'len of noisedLabels4AccCheck is : {len(noisedLabels4AccCheck)}')
+        ################################# make noised label with ratio ###############################
+        ################################# make noised label with ratio ###############################
+
+        accCheckNoiseOnly = []
+        for eachCheckElement in noisedLabels4AccCheck:
+            eachPredictedLabel = eachCheckElement[0].item()
+            eachGroundTruthLabel = eachCheckElement[1]
+
+            if modelLabelPerCluster[eachPredictedLabel] == eachGroundTruthLabel:
+                accCheck.append(1)
+            else:
+                accCheck.append(0)
+
+        accCheckTotal = []
+
+
+
+        print(f'len of accCheck is : {len(accCheck)}')
+        self.jointTrainingAccLst.append(np.mean(accCheck))
+        print(f'validation step end with accuracy : {np.mean(accCheck)}, total OK is : {np.sum(accCheck)} and '
+              f'not OK is : {np.sum(np.array(accCheck) == 0)} with '
+              f'length of data : {len(accCheck)}')
+
+        self.FeatureExtractor4FTed.to('cpu')
+        self.ClusterHeadFTed.to('cpu')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

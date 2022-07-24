@@ -804,6 +804,32 @@ class myCluster4SCAN(nn.Module):
         return out
 
 
+
+
+class myPredictorHead(nn.Module):
+    def __init__(self,
+                 inputDim,
+                 dim1,
+                 nClass
+                 ):
+        super(myPredictorHead, self).__init__()
+
+        self.inputDim = inputDim
+        self.dim1 = dim1
+        self.nClass = nClass
+
+        self.MLP = nn.Sequential(
+            nn.Linear(in_features=self.inputDim, out_features=self.dim1),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_features=self.dim1, out_features=self.nClass)
+        )
+
+    def forward(self,x):
+
+        out = self.MLP(x)
+        return out
+
+
 class myMultiCluster4SCAN(nn.Module):
     def __init__(self,
                  inputDim,
