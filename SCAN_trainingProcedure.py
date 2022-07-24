@@ -150,14 +150,14 @@ def trainWithFiltered(train_loader, featureExtractor, ClusterHead, criterion, op
         for i, batch in enumerate(train_loader):
 
             images = batch['image'].to(device)
-            labels = batch['labels']
+            labels = batch['label']
 
-            output = ClusterHead.forward(featureExtractor(images))
+            output = ClusterHead.forward(featureExtractor(images)).cpu()
 
             totalLoss ,acc = criterion(output,labels)
 
             train_loader.set_description(f'training {i}/{len(train_loader)}')
-            train_loader.set_postfix({'loss : ': finalLoss.item()})
+            train_loader.set_postfix({'loss : ': totalLoss.item()})
 
             totalLoss.backward()
 

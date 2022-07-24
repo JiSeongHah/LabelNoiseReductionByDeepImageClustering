@@ -184,7 +184,7 @@ class filteredDataLoss(nn.Module):
         if isFocal == True:
             self.lossMethod = FocalLoss()
         else:
-            self.lossMethod == nn.CrossEntropyLoss()
+            self.lossMethod = nn.CrossEntropyLoss()
 
     def forward(self, inputs, labels):
 

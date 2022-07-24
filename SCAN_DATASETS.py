@@ -385,7 +385,7 @@ class filteredDatasetNaive4SCAN(Dataset):
 
         else:
             path = self.PathLst[self.dataIndices['inputIndices'][idx]]
-            label = self.dataIndices['pseudoLabels'][idx]
+            label = self.dataIndices['clusters'][idx]
 
             with open(path, 'rb') as f:
                 img = Image.open(f).convert('RGB')
@@ -454,7 +454,7 @@ class noisedOnlyDatasetNaive4SCAN(Dataset):
                 self.dataType == 'cifar100' or \
                 self.dataType == 'stl10':
 
-            img, label = self.dataInput[self.dataIndices['resultLst'][idx][4]], self.dataIndices['resultLst'][idx][1]
+            img, label = self.dataInput[self.dataIndices['resultLst'][idx][4]], self.dataIndices['resultLst'][idx][1].squeeze()
 
             # if self.dataType == 'cifar100':
             #     label = _cifar100_to_cifar20(label)
@@ -478,7 +478,7 @@ class noisedOnlyDatasetNaive4SCAN(Dataset):
 
         else:
             path = self.PathLst[self.dataIndices['resultLst'][idx][4]]
-            label = self.dataIndices['resultLst'][idx][1]
+            label = self.dataIndices['resultLst'][idx][1].squeeze()
 
             with open(path, 'rb') as f:
                 img = Image.open(f).convert('RGB')

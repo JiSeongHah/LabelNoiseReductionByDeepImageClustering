@@ -29,8 +29,8 @@ import pickle
 from SCAN_Transformation import get_train_transformations
 from torch.utils.data import TensorDataset
 from SCAN_CONFIG import Config
-from SCAN_DATASETS import getCustomizedDataset4SCAN,filteredDatasetNaive4SCAN
-from SCAN_trainingProcedure import scanTrain,selflabelTrain
+from SCAN_DATASETS import getCustomizedDataset4SCAN,filteredDatasetNaive4SCAN,noisedOnlyDatasetNaive4SCAN
+from SCAN_trainingProcedure import scanTrain,selflabelTrain,trainWithFiltered
 from SCAN_losses import SCANLoss,selfLabelLoss,filteredDataLoss
 from SCAN_usefulUtils import getMinHeadIdx,getAccPerConfLst,loadPretrained4imagenet,Pseudo2Label
 import faiss
@@ -43,6 +43,10 @@ class doSCAN(nn.Module):
                  headSaveLoadDir,
                  FESaveLoadDir,
                  FELoadNum,
+                 FTedFESaveLoadDir,
+                 FTedheadSaveLoadDir,
+                 FTedFELoadNum,
+                 FTedheadLoadNum,
                  headLoadNum,
                  plotSaveDir,
                  NNSaveDir,
@@ -111,6 +115,11 @@ class doSCAN(nn.Module):
         self.FESaveLoadDir = FESaveLoadDir
         self.FELoadNum = FELoadNum
         self.headLoadNum = headLoadNum
+        self.FTedFESaveLoadDir = FTedFESaveLoadDir
+        self.FTedheadSaveLoadDir = FTedheadSaveLoadDir
+        self.FTedFELoadNum = FTedFELoadNum
+        self.FTedheadLoadNum = FTedheadLoadNum
+
         self.plotSaveDir = plotSaveDir
         createDirectory(self.plotSaveDir)
         self.downDir = downDir
@@ -420,7 +429,7 @@ class doSCAN(nn.Module):
 
         # ground truth label for each inputs
         gtLabelResult = torch.cat(gtLabelResult).unsqueeze(1)
-        print(f'size of gtLabelResult is : {gtLabelResult.size()}')
+        print(f'size of gtLabelResult is : {gtLabelResult.size()} and size of clusterpred is : {clusterPredResult.size()}')
         # print(f'clusterPred has size : {clusterPredResult.size()} , gtLabelResult has size : {gtLabelResult.size()}')
 
         ################################# make noised label with ratio ###############################
@@ -437,11 +446,12 @@ class doSCAN(nn.Module):
         print(f'noiseInserTerm is : {noiseInsertTerm}')
         for idx, (eachClusterPred, eachGtLabel) in enumerate(zip(clusterPredResult, gtLabelResult)):
             if idx % noiseInsertTerm == 0:
-                noisedLabels.append(torch.randint(minGtLabel.cpu(),
-                                                  maxGtLabel + 1, (1,)))
+                noisedLabel = torch.randint(minGtLabel.cpu(),
+                                                  maxGtLabel + 1, (1,))
+                noisedLabels.append(noisedLabel)
                 noisedLabels4AccCheck.append([eachClusterPred.cpu(),
                                               eachGtLabel.cpu(),
-                                              torch.randint(minGtLabel, maxGtLabel + 1, (1,))])
+                                              noisedLabel])
             else:
                 noisedLabels.append(eachGtLabel)
         noisedLabels = torch.cat(noisedLabels)
@@ -616,7 +626,7 @@ class doSCAN(nn.Module):
         # ground truth label for each inputs
         gtLabelResult = torch.cat(gtLabelResult).unsqueeze(1)
         print(f'size of gtLabelResult is : {gtLabelResult.size()}')
-        # print(f'clusterPred has size : {clusterPredResult.size()} , gtLabelResult has size : {gtLabelResult.size()}')
+        print(f'clusterPred has size : {clusterPredResult.size()} , gtLabelResult has size : {gtLabelResult.size()}')
 
         ################################# make noised label with ratio ###############################
         ################################# make noised label with ratio ###############################
@@ -776,7 +786,7 @@ class doSCAN(nn.Module):
         # ground truth label for each inputs
         gtLabelResult = torch.cat(gtLabelResult).unsqueeze(1)
         print(f'size of gtLabelResult is : {gtLabelResult.size()}')
-        # print(f'clusterPred has size : {clusterPredResult.size()} , gtLabelResult has size : {gtLabelResult.size()}')
+        print(f'clusterPred has size : {clusterPredResult.size()} , gtLabelResult has size : {gtLabelResult.size()}')
 
         ################################# make noised label with ratio ###############################
         ################################# make noised label with ratio ###############################
@@ -965,7 +975,8 @@ class doSCAN(nn.Module):
 
         # ground truth label for each inputs
         gtLabelResult = torch.cat(gtLabelResult).unsqueeze(1)
-        print(f'size of gtLabelResult is : {gtLabelResult.size()}')
+        for i in range(100):
+            print(f'size of gtLabelResult is : {gtLabelResult.size()} while clusterPredResult size is : {clusterPredResult.size()}')
         # print(f'clusterPred has size : {clusterPredResult.size()} , gtLabelResult has size : {gtLabelResult.size()}')
 
         ################################# make noised label with ratio ###############################
@@ -1029,12 +1040,12 @@ class doSCAN(nn.Module):
 
 
 
-    def loadModel4filtered(self,nclass):
+    def loadModel4filtered(self,nClass):
 
         self.FeatureExtractorBYOL.to('cpu')
         self.ClusterHead.to('cpu')
 
-        self.nClass =nclass
+        self.nClass =nClass
 
         self.FeatureExtractor4FTed = callAnyResnet(modelType=self.modelType,
                                                       numClass=self.embedSize,
@@ -1044,24 +1055,30 @@ class doSCAN(nn.Module):
 
 
         print(f'loading {self.FTedFESaveLoadDir} {self.FTedFELoadNum}.pt')
-        modelStateDict = torch.load(self.FTedFESaveLoadDir + str(self.FTedFELoadNum) + '.pt')
-        missing = self.FeatureExtractor4FTed.load_state_dict(modelStateDict)
-        print(f'missing : ', set(missing[1]))
-        # assert (set(missing[1]) == {
-        #     'contrastive_head.0.weight', 'contrastive_head.0.bias',
-        #     'contrastive_head.2.weight', 'contrastive_head.2.bias'}
-        #         or set(missing[1]) == {
-        #             'contrastive_head.weight', 'contrastive_head.bias'})
-        print(f'loading {self.FTedFESaveLoadDir}{self.FTedFELoadNum}.pt complete successfully!~!')
-
+        try:
+            modelStateDict = torch.load(self.FTedFESaveLoadDir + str(self.FTedFELoadNum) + '.pt')
+            missing = self.FeatureExtractor4FTed.load_state_dict(modelStateDict)
+            print(f'missing : ', set(missing[1]))
+            # assert (set(missing[1]) == {
+            #     'contrastive_head.0.weight', 'contrastive_head.0.bias',
+            #     'contrastive_head.2.weight', 'contrastive_head.2.bias'}
+            #         or set(missing[1]) == {
+            #             'contrastive_head.weight', 'contrastive_head.bias'})
+            print(f'loading {self.FTedFESaveLoadDir}{self.FTedFELoadNum}.pt complete successfully!~!')
+        except:
+            print('loading feature extractor failed')
+            self.FTedFELoadNum = 0
 
         self.ClusterHeadFTed = myPredictorHead(inputDim=self.embedSize,
                                            dim1=self.cDim1,
                                            nClass=self.nClass)
-
-        headLoadedDict = torch.load(self.FTedheadSaveLoadDir + str(self.FTedheadLoadNum) + '.pt')
-        self.ClusterHeadFTed.load_state_dict(headLoadedDict)
-        print(f'loading saved head : {str(self.FTedheadLoadNum)}.pt complete!!!!!!!')
+        try:
+            headLoadedDict = torch.load(self.FTedheadSaveLoadDir + str(self.FTedheadLoadNum) + '.pt')
+            self.ClusterHeadFTed.load_state_dict(headLoadedDict)
+            print(f'loading saved head : {str(self.FTedheadLoadNum)}.pt complete!!!!!!!')
+        except:
+            print('loading head failed')
+            self.FTedheadLoadNum = 0
 
         self.optimizerBackboneFTed = Adam(self.FeatureExtractor4FTed.parameters(),
                                       lr=self.lr,
@@ -1076,7 +1093,7 @@ class doSCAN(nn.Module):
         self.ftedValAcc4TotalLst = []
         self.ftedValAcc4NoiseOnlyLst = []
 
-    def trainFilteredDataNaiveVer(self):
+    def trainFilteredDataNaiveVer(self,theNoise):
 
         self.FeatureExtractor4FTed.to(self.device)
         self.ClusterHeadFTed.to(self.device)
@@ -1084,35 +1101,35 @@ class doSCAN(nn.Module):
         trainDataset = filteredDatasetNaive4SCAN(downDir=self.downDir,
                                                  savedIndicesDir = self.plotSaveDir,
                                                  dataType=self.dataType,
-                                                 noiseRatio = self.labelNoiseRatio,
+                                                 noiseRatio = theNoise,
                                                  transform= self.baseTransform
                                                  )
 
         trainDataloader = DataLoader(trainDataset, shuffle=True, batch_size=self.jointTrnBSize, num_workers=2)
 
         self.ClusterHeadFTed.train()
-        for iter in range(iterNum):
-            print(f'{iter}/{iterNum} training Start...')
-            totalLossLst,totalAccLst = trainWithFiltered(train_loader=trainDataloader,
-                                                         featureExtractor=self.FeatureExtractor4FTed,
-                                                         ClusterHead=self.ClusterHeadFTed,
-                                                         criterion=filteredDataLoss(),
-                                                         optimizer=[self.optimizerBackboneFTed, self.optimizerCHeadFTed],
-                                                         device=self.device,
-                                                         accumulNum=self.accumulNum
-                                                         )
 
-            self.ftedTrainLossLst.append(np.mean(totalLossLst))
-            self.ftedTrainAccLst.append(np.mean(totalAccLst))
+        print(f'FTed training Start...')
+        totalLossLst,totalAccLst = trainWithFiltered(train_loader=trainDataloader,
+                                                     featureExtractor=self.FeatureExtractor4FTed,
+                                                     ClusterHead=self.ClusterHeadFTed,
+                                                     criterion=filteredDataLoss(),
+                                                     optimizer=[self.optimizerBackboneFTed, self.optimizerCHeadFTed],
+                                                     device=self.device,
+                                                     accumulNum=self.accumulNum
+                                                     )
 
-            print(f'{iter}/{iterNum} training Complete !!!')
+        self.ftedTrainLossLst.append(np.mean(totalLossLst))
+        self.ftedTrainAccLst.append(np.mean(totalAccLst))
+
+        print(f'FTed training Complete !!!')
 
         self.ClusterHeadFTed.eval()
 
         self.FeatureExtractor4FTed.to('cpu')
         self.ClusterHeadFTed.to('cpu')
 
-    def valFilteredDataNaiveVer(self):
+    def valFilteredDataNaiveVer(self,theNoise):
 
         self.FeatureExtractor4FTed.to(self.device)
         self.ClusterHeadFTed.to(self.device)
@@ -1140,6 +1157,7 @@ class doSCAN(nn.Module):
                 # print(f'clusterPred hase unique ele : {torch.unique(clusterPred)}')
                 labelPredResult.append(labelPred)
                 gtLabelResult.append(loadedBatch['label'])
+                # print('bath size of label is :', loadedBatch['label'].size())
 
         # result of prediction for each inputs
         labelPredResult = torch.cat(labelPredResult)
@@ -1150,10 +1168,10 @@ class doSCAN(nn.Module):
         #         f'when validating')
 
         # ground truth label for each inputs
-        gtLabelResult = torch.cat(gtLabelResult).unsqueeze(1)
-
-        assert gtLabelResult.size() == labelPredResult.size()
+        gtLabelResult = torch.cat(gtLabelResult)
         print(f'size of gtLabelResult is : {gtLabelResult.size()} and preResult is : {labelPredResult.size()}')
+        assert gtLabelResult.size() == labelPredResult.size()
+
         # print(f'clusterPred has size : {clusterPredResult.size()} , gtLabelResult has size : {gtLabelResult.size()}')
 
         acc4Total = torch.mean((gtLabelResult==labelPredResult).float())
@@ -1162,7 +1180,7 @@ class doSCAN(nn.Module):
         trainDataset = noisedOnlyDatasetNaive4SCAN(downDir=self.downDir,
                                                    savedIndicesDir = self.plotSaveDir,
                                                    dataType=self.dataType,
-                                                   noiseRatio = self.labelNoiseRatio,
+                                                   noiseRatio = theNoise,
                                                    transform= self.baseTransform
                                                    )
 
@@ -1181,11 +1199,12 @@ class doSCAN(nn.Module):
                 # print(f'clusterPred hase unique ele : {torch.unique(clusterPred)}')
                 labelPredResult.append(labelPred)
                 gtLabelResult.append(loadedBatch['label'])
+                # print('bath size of label is :', loadedBatch['label'].size())
 
         # result of prediction for each inputs
         labelPredResult = torch.cat(labelPredResult)
         # ground truth label for each inputs
-        gtLabelResult = torch.cat(gtLabelResult).unsqueeze(1)
+        gtLabelResult = torch.cat(gtLabelResult)
 
         assert labelPredResult.size() == gtLabelResult.size()
 
@@ -1233,11 +1252,24 @@ class doSCAN(nn.Module):
         plt.clf()
         plt.cla()
 
-    def executeFTedTraining(self):
+    def executeFTedTraining(self,theNoise):
 
-        self.trainFilteredDataNaiveVer()
-        self.valFilteredDataNaiveVer()
+        self.trainFilteredDataNaiveVer(theNoise=theNoise)
+        self.valFilteredDataNaiveVer(theNoise=theNoise)
         self.valFilteredDataNaiveVerEnd()
+
+    def saveFTedModels(self,iterNum):
+
+        torch.save(self.FeatureExtractor4FTed.state_dict(), self.FTedFESaveLoadDir + str(iteredNum + self.FTedFELoadNum) + '.pt')
+        torch.save(self.ClusterHeadFTed.state_dict(),
+                   self.FTedheadSaveLoadDir + str(iteredNum + self.FTedheadLoadNum) + '.pt')
+
+        print(f'saving FTed Models complete!!!')
+        print(f'saving FTed Models complete!!!')
+        print(f'saving FTed Models complete!!!')
+
+
+
 
 
 

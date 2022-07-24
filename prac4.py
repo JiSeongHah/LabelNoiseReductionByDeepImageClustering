@@ -271,11 +271,11 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 
-dt = CIFAR10(root='~/',train=True,download=True,transform=transforms.ToTensor())
-
-print(dt.__getitem__(31))
-
-
+# dt = CIFAR10(root='~/',train=True,download=True,transform=transforms.ToTensor())
+#
+# print(dt.__getitem__(31))
+#
+#
 # ds = DataLoader(dt, batch_size=32,shuffle=True,num_workers=2)
 #
 # for idx,i in enumerate(ds):
@@ -303,10 +303,20 @@ from SCAN_usefulUtils import Pseudo2Label
 # print(x[mask])
 
 x = torch.randint(0,2,(10,))
-y = torch.randint(0,2,(10,))
+y = x.unsqueeze(1)
 
-print(torch.mean((x==y).float()))
+lst = []
+lst2 = []
+for i in x:
+    lst.append(x)
+    lst2.append(x)
+lst = torch.stack(lst)
+lst2 = torch.cat(lst2).unsqueeze(1)
 
+print(lst.size(),lst2.size())
+
+
+print(x==y)
 
 
 # dic = {

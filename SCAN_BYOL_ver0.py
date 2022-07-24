@@ -64,6 +64,9 @@ isInputProb = False
 jointTrnBSize = 128
 accumulNum = 8
 
+nClasss =  10
+theNoise = 0.1
+
 plotsaveName = mk_name(embedSize=embedSize,
                        numHeads = numHeads,
                        clusterNum=clusterNum,
@@ -85,14 +88,25 @@ FESaveLoadDir = resultSaveDir+'FEModels/'
 plotSaveDir = resultSaveDir
 NNSaveDir = resultSaveDir + 'NNFILE/'
 
+FTedFESaveLoadDir = resultSaveDir + f'FTedFEModels_{theNoise}/'
+FTedheadSaveLoadDir = resultSaveDir + f'FTedHeadModels_{theNoise}/'
+FTedFELoadNum = 0
+FTedheadLoadNum = 0
+
 createDirectory(headSaveLoadDir)
 createDirectory(FESaveLoadDir)
 createDirectory(NNSaveDir)
+createDirectory(FTedFESaveLoadDir)
+createDirectory(FTedheadSaveLoadDir)
 
 do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
              basemodelLoadName=basemodelLoadName,
              headSaveLoadDir=headSaveLoadDir,
              FESaveLoadDir=FESaveLoadDir,
+             FTedFESaveLoadDir=FTedFESaveLoadDir,
+             FTedheadSaveLoadDir =FTedheadSaveLoadDir,
+             FTedFELoadNum = FTedFELoadNum,
+             FTedheadLoadNum = FTedheadLoadNum,
              FELoadNum=FELoadNum,
              headLoadNum=headLoadNum,
              plotSaveDir=plotSaveDir,
@@ -115,7 +129,17 @@ do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
 
 # do.checkConfidence()
 # do.saveNearestNeighbor()
-do.saveFiltered()
+# do.saveFiltered()
+
+# for i in range(1,10):
+# do.saveNoiseDataIndices(1/10)
+do.loadModel4filtered(nClass=nClasss)
+for i in range(10000):
+    do.executeFTedTraining(theNoise = theNoise)
+    if i % saveRange == 0 and i != 0:
+        do.saveFTedModels(iterNum=i)
+
+
 # for i in range(10000):
 #     # do.executeTrainingHeadOnly()
 #     do.executeJointTraining()
