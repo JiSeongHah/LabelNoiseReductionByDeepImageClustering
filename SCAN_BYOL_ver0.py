@@ -64,7 +64,7 @@ isInputProb = False
 jointTrnBSize = 128
 accumulNum = 8
 
-nClasss =  10
+nClasss = 10
 theNoise = 0.1
 
 plotsaveName = mk_name(embedSize=embedSize,
@@ -137,7 +137,7 @@ do.saveNearestNeighbor()
 # for i in range(10000):
 #     do.executeFTedTraining(theNoise = theNoise)
 #     if i % saveRange == 0 and i != 0:
-#         do.saveFTedModels(iterNum=i)
+#         do.saveFTedModels(iteredNum=i)
 
 
 for i in range(100):

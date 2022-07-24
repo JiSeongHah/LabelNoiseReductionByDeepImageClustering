@@ -1281,7 +1281,7 @@ class doSCAN(nn.Module):
         self.valFilteredDataNaiveVer(theNoise=theNoise)
         self.valFilteredDataNaiveVerEnd()
 
-    def saveFTedModels(self,iterNum):
+    def saveFTedModels(self,iteredNum):
 
         torch.save(self.FeatureExtractor4FTed.state_dict(), self.FTedFESaveLoadDir + str(iteredNum + self.FTedFELoadNum) + '.pt')
         torch.save(self.ClusterHeadFTed.state_dict(),
