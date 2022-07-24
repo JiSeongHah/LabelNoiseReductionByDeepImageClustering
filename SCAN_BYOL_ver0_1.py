@@ -44,10 +44,10 @@ modelLoadDir = '/home/a286winteriscoming/'
 basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
-basemodelLoadName = 'imagenet10'
-headLoadNum = 60
-FELoadNum = 60
-embedSize = 2048
+basemodelLoadName = 'cifar10'
+headLoadNum = 0
+FELoadNum = 0
+embedSize = 512
 clusterNum = 10
 numHeads = 10
 entropyWeight = 5.0
@@ -55,14 +55,17 @@ cDim1 = 512
 trnBSize = 128
 labelNoiseRatio = 0.2
 saveRange= 20
-layerMethod= 'linear'
+layerMethod= 'mlp'
 update_cluster_head_only = False
 updateNNTerm = 10
 normalizing = False
 useLinLayer = False
 isInputProb = False
 jointTrnBSize = 128
-accumulNum = 8
+accumulNum = 4
+
+nClasss =  10
+theNoise = 0.1
 
 plotsaveName = mk_name(embedSize=embedSize,
                        numHeads = numHeads,
@@ -77,22 +80,33 @@ plotsaveName = mk_name(embedSize=embedSize,
                        isInputProb=isInputProb
                        )
 
-createDirectory(baseDir + 'dirResultImagenet10_headOnlyFalse1/' + plotsaveName)
-resultSaveDir = baseDir + 'dirResultImagenet10_headOnlyFalse1/' + plotsaveName + '/'
+createDirectory(baseDir + 'dirResultCifar10_0/' + plotsaveName)
+resultSaveDir = baseDir + 'dirResultCifar10_0/' + plotsaveName + '/'
 
 headSaveLoadDir = resultSaveDir+'headModels/'
 FESaveLoadDir = resultSaveDir+'FEModels/'
 plotSaveDir = resultSaveDir
 NNSaveDir = resultSaveDir + 'NNFILE/'
 
+FTedFESaveLoadDir = resultSaveDir + f'FTedFEModels_{theNoise}/'
+FTedheadSaveLoadDir = resultSaveDir + f'FTedHeadModels_{theNoise}/'
+FTedFELoadNum = 0
+FTedheadLoadNum = 0
+
 createDirectory(headSaveLoadDir)
 createDirectory(FESaveLoadDir)
 createDirectory(NNSaveDir)
+createDirectory(FTedFESaveLoadDir)
+createDirectory(FTedheadSaveLoadDir)
 
 do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
              basemodelLoadName=basemodelLoadName,
              headSaveLoadDir=headSaveLoadDir,
              FESaveLoadDir=FESaveLoadDir,
+             FTedFESaveLoadDir=FTedFESaveLoadDir,
+             FTedheadSaveLoadDir =FTedheadSaveLoadDir,
+             FTedFELoadNum = FTedFELoadNum,
+             FTedheadLoadNum = FTedheadLoadNum,
              FELoadNum=FELoadNum,
              headLoadNum=headLoadNum,
              plotSaveDir=plotSaveDir,
@@ -114,10 +128,21 @@ do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
 
 
 # do.checkConfidence()
-# do.saveNearestNeighbor()
-for i in range(10000):
-    # do.executeTrainingHeadOnly()
-    do.executeJointTraining()
+do.saveNearestNeighbor()
+# do.saveFiltered()
+
+# for i in range(1,10):
+# do.saveNoiseDataIndices(1/10)
+# do.loadModel4filtered(nClass=nClasss)
+# for i in range(10000):
+#     do.executeFTedTraining(theNoise = theNoise)
+#     if i % saveRange == 0 and i != 0:
+#         do.saveFTedModels(iterNum=i)
+
+
+for i in range(105):
+    do.executeTrainingHeadOnly()
+    # do.executeJointTraining()
     if i % saveRange == 0 and i != 0:
         do.saveHead(iteredNum=i)
         do.saveFeatureExtractor(iteredNum=i)
@@ -127,7 +152,3 @@ for i in range(10000):
     #     print('recalculating NN complete')
     #     print('recalculating NN complete')
     #     print('recalculating NN complete')
-
-
-
-

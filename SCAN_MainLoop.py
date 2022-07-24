@@ -534,6 +534,21 @@ class doSCAN(nn.Module):
             pickle.dump(self.minHeadIdxLst,F)
         print('saving head idx of having minimum loss lst')
 
+        with open(self.plotSaveDir+'headOnlyAccLst.pkl','wb') as F:
+            pickle.dump(self.clusterOnlyAccLst,F)
+        print('saving head only acc lst complete')
+
+        with open(self.plotSaveDir+'headOnlyConsisLossLst.pkl','wb') as F:
+            pickle.dump(self.headOnlyConsisLossLstAvg,F)
+        print('saving head only acc lst complete')
+
+        with open(self.plotSaveDir+'headOnlyEntropyLossLst.pkl','wb') as F:
+            pickle.dump(self.headOnlyEntropyLossLstAvg,F)
+        print('saving head only acc lst complete')
+
+
+
+
     def executeTrainingHeadOnly(self,iterNum=1):
         # time.sleep(10)
         self.trainHeadOnly(iterNum=iterNum)
@@ -716,6 +731,14 @@ class doSCAN(nn.Module):
         with open(self.plotSaveDir + 'minLossHeadIdxJointTraining.pkl', 'wb') as F:
             pickle.dump(self.minHeadIdxLstJointTraining, F)
         print('saving head idx of having minimum loss lst complete')
+
+        with open(self.plotSaveDir + 'jointTrnAccLst.pkl', 'wb') as F:
+            pickle.dump(self.jointTrainingAccLst, F)
+
+        with open(self.plotSaveDir + 'jointTrnLossLst.pkl', 'wb') as F:
+            pickle.dump(self.jointTrainingLossLstAvg, F)
+
+        print('saving joint trainig acc lst complete ')
 
     def executeJointTraining(self,iterNum=1):
         # time.sleep(10)
@@ -1262,7 +1285,7 @@ class doSCAN(nn.Module):
 
         torch.save(self.FeatureExtractor4FTed.state_dict(), self.FTedFESaveLoadDir + str(iteredNum + self.FTedFELoadNum) + '.pt')
         torch.save(self.ClusterHeadFTed.state_dict(),
-                   self.FTedheadSaveLoadDir + str(iteredNum + self.FTedheadLoadNum) + '.pt')
+                   self.FTedheadSaveLoadDir + str(iterNum + self.FTedheadLoadNum) + '.pt')
 
         print(f'saving FTed Models complete!!!')
         print(f'saving FTed Models complete!!!')

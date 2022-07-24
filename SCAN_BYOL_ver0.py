@@ -45,8 +45,8 @@ basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
 basemodelLoadName = 'imagenet10'
-headLoadNum = 60
-FELoadNum = 60
+headLoadNum = 0
+FELoadNum = 0
 embedSize = 2048
 clusterNum = 10
 numHeads = 10
@@ -80,8 +80,8 @@ plotsaveName = mk_name(embedSize=embedSize,
                        isInputProb=isInputProb
                        )
 
-createDirectory(baseDir + 'dirResultImagenet10_headOnlyFalse1/' + plotsaveName)
-resultSaveDir = baseDir + 'dirResultImagenet10_headOnlyFalse1/' + plotsaveName + '/'
+createDirectory(baseDir + 'dirResultImagenet10_new0/' + plotsaveName)
+resultSaveDir = baseDir + 'dirResultImagenet10_new0/' + plotsaveName + '/'
 
 headSaveLoadDir = resultSaveDir+'headModels/'
 FESaveLoadDir = resultSaveDir+'FEModels/'
@@ -128,24 +128,24 @@ do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
 
 
 # do.checkConfidence()
-# do.saveNearestNeighbor()
+do.saveNearestNeighbor()
 # do.saveFiltered()
 
 # for i in range(1,10):
 # do.saveNoiseDataIndices(1/10)
-do.loadModel4filtered(nClass=nClasss)
-for i in range(10000):
-    do.executeFTedTraining(theNoise = theNoise)
-    if i % saveRange == 0 and i != 0:
-        do.saveFTedModels(iterNum=i)
-
-
+# do.loadModel4filtered(nClass=nClasss)
 # for i in range(10000):
-#     # do.executeTrainingHeadOnly()
-#     do.executeJointTraining()
+#     do.executeFTedTraining(theNoise = theNoise)
 #     if i % saveRange == 0 and i != 0:
-#         do.saveHead(iteredNum=i)
-#         do.saveFeatureExtractor(iteredNum=i)
+#         do.saveFTedModels(iterNum=i)
+
+
+for i in range(100):
+    do.executeTrainingHeadOnly()
+    # do.executeJointTraining()
+    if i % saveRange == 0 and i != 0:
+        do.saveHead(iteredNum=i)
+        do.saveFeatureExtractor(iteredNum=i)
 
     # if i % updateNNTerm == 0:
     #     do.saveNearestNeighbor()
