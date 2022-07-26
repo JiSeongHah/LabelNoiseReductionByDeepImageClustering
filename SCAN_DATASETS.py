@@ -11,6 +11,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 import pickle
+import csv
+
 
 """ 
     AugmentedDataset
@@ -341,6 +343,9 @@ class filteredDatasetNaive4SCAN(Dataset):
         with open(self.savedIndicesDir+f'cluster2label_{self.noiseRatio}.pkl','rb') as F:
             self.cluster2label = pickle.load(F)
 
+        for k,v in self.cluster2label.items():
+            print(f'key : {k}, value : {v}')
+
         if dataType in ['imagenet10', 'imagenet50', 'imagenet100', 'imagenet200', 'tinyImagenet']:
             with open(self.downDir + f'SCAN_imagenets/{dataType}_PathLst.pkl', 'rb') as F:
                 self.PathLst = pickle.load(F)
@@ -360,8 +365,8 @@ class filteredDatasetNaive4SCAN(Dataset):
                 self.dataType == 'cifar100' or \
                 self.dataType == 'stl10':
 
-            img = self.dataInput[self.dataIndices['inputIndices'][idx]]
-            label = self.cluster2label[self.dataIndices['clusters'][idx]]
+            img = self.dataInput[self.dataIndices['inputIndices'][idx].item()]
+            label = self.cluster2label[self.dataIndices['clusters'][idx].item()]
 
             # if self.dataType == 'cifar100':
             #     label = _cifar100_to_cifar20(label)
@@ -384,8 +389,10 @@ class filteredDatasetNaive4SCAN(Dataset):
             return out
 
         else:
+
             path = self.PathLst[self.dataIndices['inputIndices'][idx]]
             label = self.dataIndices['clusters'][idx]
+
 
             with open(path, 'rb') as f:
                 img = Image.open(f).convert('RGB')
@@ -431,8 +438,11 @@ class noisedOnlyDatasetNaive4SCAN(Dataset):
             self.dataInput = preDataset.data
             self.dataLabel = preDataset.labels
 
-        with open(self.savedIndicesDir+f'noisedDataOnly_{str(self.noiseRatio)}.pkl','rb') as F:
-            self.dataIndices = pickle.load(F)
+        with open(self.savedIndicesDir+f'noisedDataOnly_{str(self.noiseRatio)}.csv','r') as F:
+            rdr = csv.reader(F)
+            dataIndices = list(rdr)
+            dataIndices = [[int(idx),int(label)] for idx,label in dataIndices]
+            self.dataIndices = dataIndices
 
         if dataType in ['imagenet10', 'imagenet50', 'imagenet100', 'imagenet200', 'tinyImagenet']:
             with open(self.downDir + f'SCAN_imagenets/{dataType}_PathLst.pkl', 'rb') as F:
@@ -446,7 +456,7 @@ class noisedOnlyDatasetNaive4SCAN(Dataset):
     def __len__(self):
 
 
-        return len(self.dataIndices['resultLst'])
+        return len(self.dataIndices)
 
     def __getitem__(self, idx):
 
@@ -454,7 +464,8 @@ class noisedOnlyDatasetNaive4SCAN(Dataset):
                 self.dataType == 'cifar100' or \
                 self.dataType == 'stl10':
 
-            img, label = self.dataInput[self.dataIndices['resultLst'][idx][4]], self.dataIndices['resultLst'][idx][1].squeeze()
+            img = self.dataInput[self.dataIndices[idx][0]]
+            label = self.dataIndices[idx][1]
 
             # if self.dataType == 'cifar100':
             #     label = _cifar100_to_cifar20(label)
@@ -477,8 +488,8 @@ class noisedOnlyDatasetNaive4SCAN(Dataset):
             return out
 
         else:
-            path = self.PathLst[self.dataIndices['resultLst'][idx][4]]
-            label = self.dataIndices['resultLst'][idx][1].squeeze()
+            path = self.PathLst[self.dataIndices[idx][0]]
+            label = self.dataIndices[idx][1]
 
             with open(path, 'rb') as f:
                 img = Image.open(f).convert('RGB')
@@ -492,24 +503,6 @@ class noisedOnlyDatasetNaive4SCAN(Dataset):
             out = {'image': img, 'label': label, 'meta': {'img_size': img_size, 'index': idx}}
 
             return out
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

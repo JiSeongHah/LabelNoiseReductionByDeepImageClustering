@@ -90,46 +90,48 @@ def selflabelTrain(train_loader,headNum, featureExtractor,ClusterHead, criterion
         totalLossDict4Plot[f'head_{h}'] = []
 
     train_loader = tqdm(train_loader)
-    with torch.set_grad_enabled(True):
-        for i, batch in enumerate(train_loader):
 
-            images = batch['image'].to(device)
-            AugedImage = batch['AugedImage'].to(device)
+    for i, batch in enumerate(train_loader):
 
-            if update_cluster_head_only:
-                with torch.no_grad():
-                    embed = featureExtractor(images)
-                    augedEmbed = featureExtractor(AugedImage)
+        images = batch['image'].to(device)
+        AugedImage = batch['AugedImage'].to(device)
 
-                with torch.no_grad():
-                    output = ClusterHead.forward(embed,inputDiff=False)
+        if update_cluster_head_only:
+            with torch.no_grad():
+                embed = featureExtractor(images)
+                augedEmbed = featureExtractor(AugedImage)
+
+            with torch.no_grad():
+                output = ClusterHead.forward(embed,inputDiff=False)
+            with torch.set_grad_enabled(True):
                 AugedOutput = ClusterHead.forward(augedEmbed,inputDiff=False)
-            else:
-                with torch.no_grad():
-                    output = ClusterHead.forward(featureExtractor(images),inputDiff=False)
+        else:
+            with torch.no_grad():
+                output = ClusterHead.forward(featureExtractor(images),inputDiff=False)
+            with torch.set_grad_enabled(True):
                 AugedOutput = ClusterHead.forward(featureExtractor(AugedImage),inputDiff=False)
 
-            totalLossInnerDict = criterion(output,AugedOutput)
+        totalLossInnerDict = criterion(output,AugedOutput)
 
-            finalLoss = sum(loss for loss in totalLossInnerDict.values())
-            train_loader.set_description(f'training {i}/{len(train_loader)}')
-            train_loader.set_postfix({'loss : ':finalLoss.item()})
+        finalLoss = sum(loss for loss in totalLossInnerDict.values())
+        train_loader.set_description(f'training {i}/{len(train_loader)}')
+        train_loader.set_postfix({'loss : ':finalLoss.item()})
 
-            finalLoss.backward()
+        finalLoss.backward()
 
-            if i%accumulNum == 0:
-                if update_cluster_head_only:
-                    optimizer[1].step()
-                    optimizer[1].zero_grad()
-                else:
-                    optimizer[0].step()
-                    optimizer[1].step()
-                    optimizer[0].zero_grad()
-                    optimizer[1].zero_grad()
+        if i%accumulNum == 0:
+            if update_cluster_head_only:
+                optimizer[1].step()
+                optimizer[1].zero_grad()
+            else:
+                optimizer[0].step()
+                optimizer[1].step()
+                optimizer[0].zero_grad()
+                optimizer[1].zero_grad()
 
-            for h in range(headNum):
-                totalLossDict4Plot[f'head_{h}'].append(totalLossInnerDict[f'head_{h}'].cpu().item())
-                
+        for h in range(headNum):
+            totalLossDict4Plot[f'head_{h}'].append(totalLossInnerDict[f'head_{h}'].cpu().item())
+
 
     return totalLossDict4Plot
 
@@ -152,7 +154,13 @@ def trainWithFiltered(train_loader, featureExtractor, ClusterHead, criterion, op
             images = batch['image'].to(device)
             labels = batch['label']
 
+            # print(f'images size is : ',images.size())
+            # print(f'labels is : {labels}')
+            # print(f'labels size si : {labels.size()}')
+
             output = ClusterHead.forward(featureExtractor(images)).cpu()
+            # print(f'output is ,',output)
+            # print(f'output size is : {output.size()}')
 
             totalLoss ,acc = criterion(output,labels)
 

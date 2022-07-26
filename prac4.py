@@ -302,21 +302,36 @@ from SCAN_usefulUtils import Pseudo2Label
 #
 # print(x[mask])
 
-x = torch.randint(0,2,(10,))
-y = x.unsqueeze(1)
+# x = torch.randint(0,2,(10,))
+# y = x.unsqueeze(1)
+#
+# lst = []
+# lst2 = []
+# for i in x:
+#     lst.append(x)
+#     lst2.append(x)
+# lst = torch.stack(lst)
+# lst2 = torch.cat(lst2).unsqueeze(1)
+#
+# print(lst.size(),lst2.size())
+#
+#
+# print(x==y)
+import csv
+z = [[i,-i] for i in range(10)]
+with open('/home/emeraldsword1423/alabania.csv','w') as f:
+    wr = csv.writer(f)
+    wr.writerows(z)
 
-lst = []
-lst2 = []
-for i in x:
-    lst.append(x)
-    lst2.append(x)
-lst = torch.stack(lst)
-lst2 = torch.cat(lst2).unsqueeze(1)
-
-print(lst.size(),lst2.size())
+with open('/home/emeraldsword1423/alabania.csv','r') as f:
+    rdr = csv.reader(f)
+    lst = list(rdr)
+    lst = [[int(i),int(j)] for i,j in lst]
 
 
-print(x==y)
+print(lst)
+
+
 
 
 # dic = {

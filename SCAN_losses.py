@@ -20,7 +20,7 @@ class MaskedCELoss(nn.Module):
 
 
 class ConfidenceBasedCE(nn.Module):
-    def __init__(self, threshold,isInputProb, weight4CE=True):
+    def __init__(self, threshold,isInputProb, weight4CE=False):
         super(ConfidenceBasedCE, self).__init__()
         self.loss = MaskedCELoss()
         self.softmax = nn.Softmax(dim=1)

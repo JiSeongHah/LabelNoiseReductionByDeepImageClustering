@@ -45,8 +45,8 @@ basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
 basemodelLoadName = 'cifar10'
-headLoadNum = 0
-FELoadNum = 0
+headLoadNum = 100
+FELoadNum = 100
 embedSize = 512
 clusterNum = 10
 numHeads = 10
@@ -65,7 +65,7 @@ jointTrnBSize = 128
 accumulNum = 4
 
 nClasss =  10
-theNoise = 0.1
+
 
 plotsaveName = mk_name(embedSize=embedSize,
                        numHeads = numHeads,
@@ -88,67 +88,73 @@ FESaveLoadDir = resultSaveDir+'FEModels/'
 plotSaveDir = resultSaveDir
 NNSaveDir = resultSaveDir + 'NNFILE/'
 
-FTedFESaveLoadDir = resultSaveDir + f'FTedFEModels_{theNoise}/'
-FTedheadSaveLoadDir = resultSaveDir + f'FTedHeadModels_{theNoise}/'
-FTedFELoadNum = 0
-FTedheadLoadNum = 0
 
-createDirectory(headSaveLoadDir)
-createDirectory(FESaveLoadDir)
-createDirectory(NNSaveDir)
-createDirectory(FTedFESaveLoadDir)
-createDirectory(FTedheadSaveLoadDir)
+theNoiseLst = [i/10 for i in range(1,10)]
 
-do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
-             basemodelLoadName=basemodelLoadName,
-             headSaveLoadDir=headSaveLoadDir,
-             FESaveLoadDir=FESaveLoadDir,
-             FTedFESaveLoadDir=FTedFESaveLoadDir,
-             FTedheadSaveLoadDir =FTedheadSaveLoadDir,
-             FTedFELoadNum = FTedFELoadNum,
-             FTedheadLoadNum = FTedheadLoadNum,
-             FELoadNum=FELoadNum,
-             headLoadNum=headLoadNum,
-             plotSaveDir=plotSaveDir,
-             NNSaveDir = NNSaveDir,
-             embedSize = embedSize,
-             normalizing=normalizing,
-             useLinLayer = useLinLayer,
-             isInputProb=isInputProb,
-             cDim1=cDim1,
-             numHeads = numHeads,
-             layerMethod=layerMethod,
-             jointTrnBSize= jointTrnBSize,
-             accumulNum = accumulNum,
-             update_cluster_head_only = update_cluster_head_only,
-             labelNoiseRatio = labelNoiseRatio,
-             configPath = configPath,
-             trnBSize=trnBSize,
-             clusterNum = clusterNum)
+for idx,theNoise in enumerate(theNoiseLst):
 
+    FTedFESaveLoadDir = resultSaveDir + f'FTedFEModels_{theNoise}/'
+    FTedheadSaveLoadDir = resultSaveDir + f'FTedHeadModels_{theNoise}/'
+    FTedFELoadNum = 0
+    FTedheadLoadNum = 0
 
-# do.checkConfidence()
-do.saveNearestNeighbor()
-# do.saveFiltered()
+    createDirectory(headSaveLoadDir)
+    createDirectory(FESaveLoadDir)
+    createDirectory(NNSaveDir)
+    createDirectory(FTedFESaveLoadDir)
+    createDirectory(FTedheadSaveLoadDir)
 
-# for i in range(1,10):
-# do.saveNoiseDataIndices(1/10)
-# do.loadModel4filtered(nClass=nClasss)
-# for i in range(10000):
-#     do.executeFTedTraining(theNoise = theNoise)
-#     if i % saveRange == 0 and i != 0:
-#         do.saveFTedModels(iterNum=i)
+    do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
+                 basemodelLoadName=basemodelLoadName,
+                 headSaveLoadDir=headSaveLoadDir,
+                 FESaveLoadDir=FESaveLoadDir,
+                 FTedFESaveLoadDir=FTedFESaveLoadDir,
+                 FTedheadSaveLoadDir =FTedheadSaveLoadDir,
+                 FTedFELoadNum = FTedFELoadNum,
+                 FTedheadLoadNum = FTedheadLoadNum,
+                 FELoadNum=FELoadNum,
+                 headLoadNum=headLoadNum,
+                 plotSaveDir=plotSaveDir,
+                 NNSaveDir = NNSaveDir,
+                 embedSize = embedSize,
+                 normalizing=normalizing,
+                 useLinLayer = useLinLayer,
+                 isInputProb=isInputProb,
+                 cDim1=cDim1,
+                 numHeads = numHeads,
+                 layerMethod=layerMethod,
+                 jointTrnBSize= jointTrnBSize,
+                 accumulNum = accumulNum,
+                 update_cluster_head_only = update_cluster_head_only,
+                 labelNoiseRatio = labelNoiseRatio,
+                 configPath = configPath,
+                 trnBSize=trnBSize,
+                 clusterNum = clusterNum)
 
 
-for i in range(105):
-    do.executeTrainingHeadOnly()
-    # do.executeJointTraining()
-    if i % saveRange == 0 and i != 0:
-        do.saveHead(iteredNum=i)
-        do.saveFeatureExtractor(iteredNum=i)
+    # do.checkConfidence()
+    # do.saveNearestNeighbor()
+    # if idx ==0:
+    #     do.saveFiltered()
+    #     for theNoise in theNoiseLst:
+    #         do.saveNoiseDataIndices(theNoise)
 
-    # if i % updateNNTerm == 0:
-    #     do.saveNearestNeighbor()
-    #     print('recalculating NN complete')
-    #     print('recalculating NN complete')
-    #     print('recalculating NN complete')
+    do.loadModel4filtered(nClass=nClasss)
+    for i in range(201):
+        do.executeFTedTraining(theNoise = theNoise)
+        if i % saveRange == 0 and i != 0:
+            do.saveFTedModels(iterNum=i)
+
+
+    # for i in range(202):
+    #     do.executeTrainingHeadOnly()
+        # do.executeJointTraining()
+        # if i % saveRange == 0 and i != 0:
+        #     do.saveHead(iteredNum=i)
+        #     do.saveFeatureExtractor(iteredNum=i)
+
+        # if i % updateNNTerm == 0:
+        #     do.saveNearestNeighbor()
+        #     print('recalculating NN complete')
+        #     print('recalculating NN complete')
+        #     print('recalculating NN complete')

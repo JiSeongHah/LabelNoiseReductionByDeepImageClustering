@@ -1,3 +1,5 @@
+import csv
+
 import torch
 import numpy as np
 from sklearn.cluster import KMeans
@@ -998,8 +1000,8 @@ class doSCAN(nn.Module):
 
         # ground truth label for each inputs
         gtLabelResult = torch.cat(gtLabelResult).unsqueeze(1)
-        for i in range(100):
-            print(f'size of gtLabelResult is : {gtLabelResult.size()} while clusterPredResult size is : {clusterPredResult.size()}')
+        # for i in range(100):
+        #     print(f'size of gtLabelResult is : {gtLabelResult.size()} while clusterPredResult size is : {clusterPredResult.size()}')
         # print(f'clusterPred has size : {clusterPredResult.size()} , gtLabelResult has size : {gtLabelResult.size()}')
 
         ################################# make noised label with ratio ###############################
@@ -1025,24 +1027,26 @@ class doSCAN(nn.Module):
                 noisedLabel = torch.randint(minGtLabel.cpu(),
                                                   maxGtLabel + 1, (1,))
                 noisedLabels.append(noisedLabel)
-                noisedLabels4AccCheck.append([eachClusterPred.cpu(),
-                                              eachGtLabel.cpu(),
-                                              noisedLabel,
-                                              eachClusterPredValue,
-                                              eachIndex])
+                noisedLabels4AccCheck.append([eachIndex.item(),
+                                              eachGtLabel.cpu().clone().detach().item()
+                                              ])
                 noiseOrNot[eachIndex] = True
             else:
                 noisedLabels.append(eachGtLabel)
                 noiseOrNot[eachIndex] = False
 
         noisedLabels = torch.cat(noisedLabels)
+
+        with open(self.plotSaveDir+f'noisedDataOnly_{str(theNoise)}.csv', 'w') as F:
+            wr = csv.writer(F)
+            wr.writerows(noisedLabels4AccCheck)
+
         noisedDataDict = {
-            'resultLst' : noisedLabels4AccCheck,
             'noiseOrNot' : noiseOrNot
         }
 
-        with open(self.plotSaveDir+f'noisedDataOnly_{str(theNoise)}.pkl', 'wb') as F:
-            pickle.dump(noisedDataDict,F)
+        # with open(self.plotSaveDir+f'noisedDataOnly_{str(theNoise)}.pkl', 'wb') as F:
+        #     pickle.dump(noisedDataDict,F)
         print('saving noised Data only complete')
         ################################# make noised label with ratio ###############################
         ################################# make noised label with ratio ###############################
