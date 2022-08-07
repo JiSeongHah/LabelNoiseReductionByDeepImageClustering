@@ -316,39 +316,174 @@ from SCAN_usefulUtils import Pseudo2Label
 # print(lst.size(),lst2.size())
 #
 #
-# print(x==y)
+# # print(x==y)
+# import csv
+# x = [i for i in range(10)]
+# y = [-i for i in range(10)]
+# z = [x,y]
+#
+# with open('/home/emeraldsword1423/alabania.csv','w') as f:
+#     wr = csv.writer(f)
+#     wr.writerows(z)
+#
+# with open('/home/emeraldsword1423/alabania.csv','r') as f:
+#     rdr = csv.reader(f)
+#     lst = list(rdr)
+#
+#
+# print(lst)
+# import csv
+#
+# x = [i**i for i in range(3,10)]
+# y = [-i for i in range(3,10)]
+#
+# with open('/home/emeraldsword1423/nowTest.csv','w') as F:
+#     wr = csv.writer(F)
+#     wr.writerow(x)
+#     wr.writerow(y)
+
+#
+# dir = '/home/a286/hjs_dir1/'
+#
+# exDir = dir+'mySCAN0/'
+#
+# lst = os.walk(exDir)
+#
+# for root,dirs,fles in lst:
+#
+#     newDir = root.replace('mySCAN0','mySCAN_ResultOnly')
+#     createDirectory(newDir)
+#     for fle in fles:
+#         if fle.endswith('.png') or fle.endswith('.pkl') or fle.endswith('.csv'):
+#             shutil.copy(os.path.join(root,fle),os.path.join(newDir,fle))
+#             print(f'copying {os.path.join(root,fle)} to {os.path.join(newDir,fle)} complete')
+#
+#
+
 import csv
-z = [[i,-i] for i in range(10)]
-with open('/home/emeraldsword1423/alabania.csv','w') as f:
-    wr = csv.writer(f)
-    wr.writerows(z)
+import shutil
+import os
+from save_funcs import createDirectory
 
-with open('/home/emeraldsword1423/alabania.csv','r') as f:
-    rdr = csv.reader(f)
-    lst = list(rdr)
-    lst = [[int(i),int(j)] for i,j in lst]
+def findDir(dirLst,idx):
 
-
-print(lst)
+    for eachDir in dirLst:
+        if idx in eachDir:
+            return eachDir
 
 
 
+Dir = '/home/emeraldsword1423/mySCAN_ResultOnly/'
 
-# dic = {
-#     0:0,
-#     1:1,
-#     2:2
-# }
-#
-# inputs = torch.randint(0,3,(5,))
-# print(inputs,111)
-# labels = Pseudo2Label(dic,inputs)
-# print(labels,222)
-#
-#
-# x = torch.argmax(torch.randn(3,2))
-# print(x.type())
-#
+yesLstCifar10 = []
+yesLstCifar20 = []
+yesLstStl10 = []
+yesLstImagenet10 = []
+
+csvLst = []
+
+for i in range(1,11):
+    yesLstImagenet10.append(f'dirResultImagenet10_new{i+1}/')
+    yesLstCifar10.append(f'dirResultCifar10_new{i}/')
+    yesLstStl10.append(f'dirResultSTL10_new{i}/')
+    yesLstCifar20.append(f'dirResultCIFAR20_new{i}/')
+
+allPaths = os.walk(Dir)
+
+for root,dirs,fles in allPaths:
+    for fle in fles:
+        if 'accPerNoiseRatioLst.csv' in fle:
+            csvLst.append(os.path.join(root,fle))
+
+#########################################################################################
+noiseOnlyLst = []
+noiseTotalLst = []
+
+for eachCifar in yesLstCifar10:
+
+    eachCifarPath = findDir(csvLst,eachCifar)
+    with open(eachCifarPath,'r') as F:
+        rdr = csv.reader(F)
+        loadedLst = list(rdr)
+        noiseOnlyLst.append(loadedLst[0])
+        noiseTotalLst.append(loadedLst[1])
+
+with open(Dir+'Cifar10_noiseOnly.csv','w') as F:
+    wr = csv.writer(F)
+    wr.writerow(['noise only Lst'])
+    wr.writerows(noiseOnlyLst)
+    wr.writerow(['noise total Lst'])
+    wr.writerows(noiseTotalLst)
+
+############################################################################################
+noiseOnlyLst = []
+noiseTotalLst = []
+
+for eachCifar in yesLstCifar20:
+
+    eachCifarPath = findDir(csvLst,eachCifar)
+    with open(eachCifarPath,'r') as F:
+        rdr = csv.reader(F)
+        loadedLst = list(rdr)
+        noiseOnlyLst.append(loadedLst[0])
+        noiseTotalLst.append(loadedLst[1])
+
+with open(Dir+'Cifar20_AccPerNoiseRatio.csv','w') as F:
+    wr = csv.writer(F)
+    wr.writerow(['noise only Lst'])
+    wr.writerows(noiseOnlyLst)
+    wr.writerow(['noise total Lst'])
+    wr.writerows(noiseTotalLst)
+
+
+##############################################################################################
+
+noiseOnlyLst = []
+noiseTotalLst = []
+
+for eachCifar in yesLstStl10:
+
+    eachCifarPath = findDir(csvLst,eachCifar)
+    with open(eachCifarPath,'r') as F:
+        rdr = csv.reader(F)
+        loadedLst = list(rdr)
+        noiseOnlyLst.append(loadedLst[0])
+        noiseTotalLst.append(loadedLst[1])
+
+with open(Dir+'Stl10_AccPerNoiseRatio.csv','w') as F:
+    wr = csv.writer(F)
+    wr.writerow(['noise only Lst'])
+    wr.writerows(noiseOnlyLst)
+    wr.writerow(['noise total Lst'])
+    wr.writerows(noiseTotalLst)
+
+
+##############################################################################################
+
+noiseOnlyLst = []
+noiseTotalLst = []
+
+for eachCifar in yesLstImagenet10:
+
+    eachCifarPath = findDir(csvLst,eachCifar)
+    with open(eachCifarPath,'r') as F:
+        rdr = csv.reader(F)
+        loadedLst = list(rdr)
+        noiseOnlyLst.append(loadedLst[0])
+        noiseTotalLst.append(loadedLst[1])
+
+with open(Dir+'Imagenet10_AccPerNoiseRatio.csv','w') as F:
+    wr = csv.writer(F)
+    wr.writerow(['noise only Lst'])
+    wr.writerows(noiseOnlyLst)
+    wr.writerow(['noise total Lst'])
+    wr.writerows(noiseTotalLst)
+
+
+##############################################################################################
+
+
+
 
 
 

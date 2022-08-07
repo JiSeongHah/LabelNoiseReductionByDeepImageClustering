@@ -314,6 +314,7 @@ class filteredDatasetNaive4SCAN(Dataset):
                  savedIndicesDir,
                  dataType,
                  noiseRatio,
+                 threshold,
                  transform
                  ):
         super(filteredDatasetNaive4SCAN, self).__init__()
@@ -322,6 +323,7 @@ class filteredDatasetNaive4SCAN(Dataset):
         self.savedIndicesDir = savedIndicesDir
         self.dataType = dataType
         self.noiseRatio = noiseRatio
+        self.threshold = threshold
         self.transform = transform
 
         if dataType == 'cifar10':
@@ -337,7 +339,7 @@ class filteredDatasetNaive4SCAN(Dataset):
             self.dataInput = preDataset.data
             self.dataLabel = preDataset.labels
 
-        with open(self.savedIndicesDir+f'filteredData.pkl','rb') as F:
+        with open(self.savedIndicesDir+f'filteredData_{self.threshold}.pkl','rb') as F:
             self.dataIndices = pickle.load(F)
 
         with open(self.savedIndicesDir+f'cluster2label_{self.noiseRatio}.pkl','rb') as F:

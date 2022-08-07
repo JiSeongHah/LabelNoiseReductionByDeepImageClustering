@@ -45,8 +45,8 @@ basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
 basemodelLoadName = 'imagenet10'
-headLoadNum = 100
-FELoadNum = 100
+headLoadNum = 300
+FELoadNum = 300
 embedSize = 2048
 clusterNum = 10
 numHeads = 10
@@ -56,34 +56,35 @@ trnBSize = 128
 labelNoiseRatio = 0.2
 saveRange= 20
 layerMethod= 'mlp'
-update_cluster_head_only = False
+update_cluster_head_only = True
 updateNNTerm = 10
 normalizing = False
 useLinLayer = False
 isInputProb = False
-jointTrnBSize = 128
-accumulNum = 8
+jointTrnBSize = 128*4
+accumulNum = 2
 
 nClasss = 10
 theNoiseLst = [i/10 for i in range(1,10)]
+theNoise= theNoiseLst[0]
 
-for idx, theNoise in enumerate(theNoiseLst):
 
-    plotsaveName = mk_name(embedSize=embedSize,
-                           numHeads = numHeads,
-                           clusterNum=clusterNum,
-                           entropyWeight=entropyWeight,
-                           labelNoiseRatio = labelNoiseRatio,
-                           cDim1=cDim1,
-                           layerMethod=layerMethod,
-                           # headOnly = update_cluster_head_only,
-                           normalizing=normalizing,
-                           useLinLayer = useLinLayer,
-                           isInputProb=isInputProb
-                           )
+plotsaveName = mk_name(embedSize=embedSize,
+                       numHeads = numHeads,
+                       clusterNum=clusterNum,
+                       entropyWeight=entropyWeight,
+                       labelNoiseRatio = labelNoiseRatio,
+                       cDim1=cDim1,
+                       layerMethod=layerMethod,
+                       headOnly = update_cluster_head_only,
+                       normalizing=normalizing,
+                       useLinLayer = useLinLayer,
+                       isInputProb=isInputProb
+                       )
 
-    createDirectory(baseDir + 'dirResultImagenet10_new0/' + plotsaveName)
-    resultSaveDir = baseDir + 'dirResultImagenet10_new0/' + plotsaveName + '/'
+for IIDX in range(1,2):
+    createDirectory(baseDir + f'dirResultImagenet10_new{12}/' + plotsaveName)
+    resultSaveDir = baseDir + f'dirResultImagenet10_new{12}/' + plotsaveName + '/'
 
     headSaveLoadDir = resultSaveDir+'headModels/'
     FESaveLoadDir = resultSaveDir+'FEModels/'
@@ -127,28 +128,40 @@ for idx, theNoise in enumerate(theNoiseLst):
                  configPath = configPath,
                  trnBSize=trnBSize,
                  clusterNum = clusterNum)
-
-
+    #
+    # if idx ==0:
+    #     do.checkConfidence()
     # do.checkConfidence()
     # do.saveNearestNeighbor()
     # if idx == 0:
     #     do.saveFiltered()
-    #     for theNoise in theNoiseLst:
-    #         do.saveNoiseDataIndices(theNoise)
+        # for theNoise in theNoiseLst:
+        #     do.saveNoiseDataIndices(theNoise)
 
-    do.loadModel4filtered(nClass=nClasss)
-    for i in range(201):
-        do.executeFTedTraining(theNoise = theNoise)
-        if i % saveRange == 0 and i != 0:
-            do.saveFTedModels(iteredNum=i)
+    # do.loadModel4filtered(nClass=nClasss)
+    # for i in range(201):
+    #     do.executeFTedTraining(theNoise = theNoise)
+    #     if i % saveRange == 0 and i != 0:
+    #         do.saveFTedModels(iteredNum=i)
+
+
 
     #
-    # for i in range(201):
-    #     # do.executeTrainingHeadOnly()
-    #     do.executeJointTraining()
-    #     if i % saveRange == 0 and i != 0:
-    #         do.saveHead(iteredNum=i)
-    #         do.saveFeatureExtractor(iteredNum=i)
+    # noiseLst = [i/20 for i in range(2,19)]
+    # do.checkAccPerNoise(noiseLst)
+    do.saveNearestNeighbor()
+    for i in range(101):
+        do.executeTrainingHeadOnly()
+        # do.executeJointTraining()
+        if i % saveRange == 0 and i != 0:
+            do.saveHead(iteredNum=i)
+            do.saveFeatureExtractor(iteredNum=i)
+    for i in range(101,301):
+        # do.executeTrainingHeadOnly()
+        do.executeJointTraining()
+        if i % saveRange == 0 and i != 0:
+            do.saveHead(iteredNum=i)
+            do.saveFeatureExtractor(iteredNum=i)
 
         # if i % updateNNTerm == 0:
         #     do.saveNearestNeighbor()
@@ -159,3 +172,101 @@ for idx, theNoise in enumerate(theNoiseLst):
 
 
 
+
+
+
+
+
+    # for idx, theNoise in enumerate(theNoiseLst):
+    #
+    #     plotsaveName = mk_name(embedSize=embedSize,
+    #                            numHeads = numHeads,
+    #                            clusterNum=clusterNum,
+    #                            entropyWeight=entropyWeight,
+    #                            labelNoiseRatio = labelNoiseRatio,
+    #                            cDim1=cDim1,
+    #                            layerMethod=layerMethod,
+    #                            # headOnly = update_cluster_head_only,
+    #                            normalizing=normalizing,
+    #                            useLinLayer = useLinLayer,
+    #                            isInputProb=isInputProb
+    #                            )
+    #
+    #     createDirectory(baseDir + 'dirResultImagenet10_new0/' + plotsaveName)
+    #     resultSaveDir = baseDir + 'dirResultImagenet10_new0/' + plotsaveName + '/'
+    #
+    #     headSaveLoadDir = resultSaveDir+'headModels/'
+    #     FESaveLoadDir = resultSaveDir+'FEModels/'
+    #     plotSaveDir = resultSaveDir
+    #     NNSaveDir = resultSaveDir + 'NNFILE/'
+    #
+    #     FTedFESaveLoadDir = resultSaveDir + f'FTedFEModels_{theNoise}/'
+    #     FTedheadSaveLoadDir = resultSaveDir + f'FTedHeadModels_{theNoise}/'
+    #     FTedFELoadNum = 0
+    #     FTedheadLoadNum = 0
+    #
+    #     createDirectory(headSaveLoadDir)
+    #     createDirectory(FESaveLoadDir)
+    #     createDirectory(NNSaveDir)
+    #     createDirectory(FTedFESaveLoadDir)
+    #     createDirectory(FTedheadSaveLoadDir)
+    #
+    #     do =  doSCAN(basemodelSaveLoadDir=basemodelLoadDir,
+    #                  basemodelLoadName=basemodelLoadName,
+    #                  headSaveLoadDir=headSaveLoadDir,
+    #                  FESaveLoadDir=FESaveLoadDir,
+    #                  FTedFESaveLoadDir=FTedFESaveLoadDir,
+    #                  FTedheadSaveLoadDir =FTedheadSaveLoadDir,
+    #                  FTedFELoadNum = FTedFELoadNum,
+    #                  FTedheadLoadNum = FTedheadLoadNum,
+    #                  FELoadNum=FELoadNum,
+    #                  headLoadNum=headLoadNum,
+    #                  plotSaveDir=plotSaveDir,
+    #                  NNSaveDir = NNSaveDir,
+    #                  embedSize = embedSize,
+    #                  normalizing=normalizing,
+    #                  useLinLayer = useLinLayer,
+    #                  isInputProb=isInputProb,
+    #                  cDim1=cDim1,
+    #                  numHeads = numHeads,
+    #                  layerMethod=layerMethod,
+    #                  jointTrnBSize= jointTrnBSize,
+    #                  accumulNum = accumulNum,
+    #                  update_cluster_head_only = update_cluster_head_only,
+    #                  labelNoiseRatio = labelNoiseRatio,
+    #                  configPath = configPath,
+    #                  trnBSize=trnBSize,
+    #                  clusterNum = clusterNum)
+    #
+    #     if idx ==0:
+    #         do.checkConfidence()
+    #     # do.checkConfidence()
+    #     # do.saveNearestNeighbor()
+    #     if idx == 0:
+    #         do.saveFiltered()
+    #         # for theNoise in theNoiseLst:
+    #         #     do.saveNoiseDataIndices(theNoise)
+    #
+    #     do.loadModel4filtered(nClass=nClasss)
+    #     for i in range(201):
+    #         do.executeFTedTraining(theNoise = theNoise)
+    #         if i % saveRange == 0 and i != 0:
+    #             do.saveFTedModels(iteredNum=i)
+    #
+    #     #
+    #     # for i in range(201):
+    #     #     # do.executeTrainingHeadOnly()
+    #     #     do.executeJointTraining()
+    #     #     if i % saveRange == 0 and i != 0:
+    #     #         do.saveHead(iteredNum=i)
+    #     #         do.saveFeatureExtractor(iteredNum=i)
+    #
+    #         # if i % updateNNTerm == 0:
+    #         #     do.saveNearestNeighbor()
+    #         #     print('recalculating NN complete')
+    #         #     print('recalculating NN complete')
+    #         #     print('recalculating NN complete')
+    #
+    #
+    #
+    #

@@ -859,20 +859,26 @@ class myMultiCluster4SCAN(nn.Module):
             self.__setattr__(f'eachHead_{h}',headH)
 
 
-    def forward(self,x,inputDiff=True):
+    def forward(self,x,inputDiff=True,headIdxWithMinLoss=None):
 
-        totalForwardResult = {}
+        if headIdxWithMinLoss ==None:
 
-        if inputDiff == True:
-            for h in range(self.numHead):
-                eachForwardResult = self.__getattr__(f'eachHead_{h}').forward(x[h])
-                totalForwardResult[f'eachHead_{h}'] = eachForwardResult
+            totalForwardResult = {}
+
+            if inputDiff == True:
+                for h in range(self.numHead):
+                    eachForwardResult = self.__getattr__(f'eachHead_{h}').forward(x[h])
+                    totalForwardResult[f'eachHead_{h}'] = eachForwardResult
+            else:
+                for h in range(self.numHead):
+                    eachForwardResult = self.__getattr__(f'eachHead_{h}').forward(x)
+                    totalForwardResult[f'eachHead_{h}'] = eachForwardResult
+
+            return totalForwardResult
+
         else:
-            for h in range(self.numHead):
-                eachForwardResult = self.__getattr__(f'eachHead_{h}').forward(x)
-                totalForwardResult[f'eachHead_{h}'] = eachForwardResult
+            return self.__getattr__(f'eachHead_{headIdxWithMinLoss}').forward(x=x)
 
-        return totalForwardResult
 
 
     def getTotalLoss(self,x,label,withEntropy=False,entropyWeight=5.0,clusteringWeight=1.0):

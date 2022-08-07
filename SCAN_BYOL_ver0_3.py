@@ -45,8 +45,8 @@ basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
 configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
 
 basemodelLoadName = 'cifar100'
-headLoadNum = 100
-FELoadNum = 100
+headLoadNum = 300
+FELoadNum = 300
 embedSize = 512
 clusterNum = 10
 numHeads = 10
@@ -61,8 +61,8 @@ updateNNTerm = 10
 normalizing = False
 useLinLayer = False
 isInputProb = False
-jointTrnBSize = 512
-accumulNum = 4
+jointTrnBSize = 1024
+accumulNum = 1
 
 nClasss =  20
 theNoise = 0.1
@@ -74,23 +74,24 @@ plotsaveName = mk_name(embedSize=embedSize,
                        labelNoiseRatio = labelNoiseRatio,
                        cDim1=cDim1,
                        layerMethod=layerMethod,
-                       # headOnly = update_cluster_head_only,
+                       headOnly = update_cluster_head_only,
                        normalizing=normalizing,
                        useLinLayer = useLinLayer,
                        isInputProb=isInputProb
                        )
 
-createDirectory(baseDir + 'dirResultCIFAR20_new0/' + plotsaveName)
-resultSaveDir = baseDir + 'dirResultCIFAR20_new0/' + plotsaveName + '/'
+for IIDX in range(1,11):
+    createDirectory(baseDir + f'dirResultCIFAR20_new{IIDX}/' + plotsaveName)
+    resultSaveDir = baseDir + f'dirResultCIFAR20_new{IIDX}/' + plotsaveName + '/'
 
-headSaveLoadDir = resultSaveDir+'headModels/'
-FESaveLoadDir = resultSaveDir+'FEModels/'
-plotSaveDir = resultSaveDir
-NNSaveDir = resultSaveDir + 'NNFILE/'
+    headSaveLoadDir = resultSaveDir+'headModels/'
+    FESaveLoadDir = resultSaveDir+'FEModels/'
+    plotSaveDir = resultSaveDir
+    NNSaveDir = resultSaveDir + 'NNFILE/'
 
-theNoiseLst = [i/10 for i in range(1,10)]
+    theNoiseLst = [i/10 for i in range(1,10)]
+    theNoise = theNoiseLst[0]
 
-for idx,theNoise in enumerate(theNoiseLst):
 
     FTedFESaveLoadDir = resultSaveDir + f'FTedFEModels_{theNoise}/'
     FTedheadSaveLoadDir = resultSaveDir + f'FTedHeadModels_{theNoise}/'
@@ -130,27 +131,36 @@ for idx,theNoise in enumerate(theNoiseLst):
                  trnBSize=trnBSize,
                  clusterNum = clusterNum)
 
-
-    # do.checkConfidence()
+    # if idx ==0:
+    #     do.checkConfidence()
     # do.saveNearestNeighbor()
     # if idx ==0:
     #     do.saveFiltered()
     #     for theNoise in theNoiseLst:
     #         do.saveNoiseDataIndices(theNoise)
 
-    do.loadModel4filtered(nClass=nClasss)
-    for i in range(201):
-        do.executeFTedTraining(theNoise = theNoise)
-        if i % saveRange == 0 and i != 0:
-            do.saveFTedModels(iteredNum=i)
+    # do.loadModel4filtered(nClass=nClasss)
+    # for i in range(201):
+    #     do.executeFTedTraining(theNoise = theNoise)
+    #     if i % saveRange == 0 and i != 0:
+    #         do.saveFTedModels(iteredNum=i)
 
-
-    # for i in range(202):
+    noiseLst = [i/20 for i in range(2,19)]
+    do.checkAccPerNoise(noiseLst)
+    # do.saveNearestNeighbor()
+    # for i in range(101):
     #     do.executeTrainingHeadOnly()
-        # do.executeJointTraining()
-        # if i % saveRange == 0 and i != 0:
-        #     do.saveHead(iteredNum=i)
-        #     do.saveFeatureExtractor(iteredNum=i)
+    #     # do.executeJointTraining()
+    #     if i % saveRange == 0 and i != 0:
+    #         do.saveHead(iteredNum=i)
+    #         do.saveFeatureExtractor(iteredNum=i)
+    # for i in range(101,301):
+    #     # do.executeTrainingHeadOnly()
+    #     do.executeJointTraining()
+    #     if i % saveRange == 0 and i != 0:
+    #         do.saveHead(iteredNum=i)
+    #         do.saveFeatureExtractor(iteredNum=i)
+
 
         # if i % updateNNTerm == 0:
         #     do.saveNearestNeighbor()
