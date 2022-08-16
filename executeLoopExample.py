@@ -39,10 +39,10 @@ from SCAN_MainLoop import doSCAN
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
-baseDir = '/home/a286/hjs_dir1/mySCAN0/'
-modelLoadDir = '/home/a286winteriscoming/'
-basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN0/pretrainedModels/'
-configPath = '/home/a286/hjs_dir1/mySCAN0/SCAN_Configs.py'
+baseDir = 'your base directory'
+modelLoadDir = 'directory to load saved model'
+basemodelLoadDir = 'directory to load pretrained model'
+configPath = 'directory to load config'
 
 basemodelLoadName = 'imagenet10'
 headLoadNum = 300
