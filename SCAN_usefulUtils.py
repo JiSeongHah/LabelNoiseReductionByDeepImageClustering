@@ -4,6 +4,8 @@ from scipy.stats import mode
 import pickle
 import torch
 
+
+# get index of cluster head which has minimum loss
 def getMinHeadIdx(loadDir):
 
     with open(loadDir+'minLossHeadIdx.pkl','rb') as f:
@@ -13,6 +15,8 @@ def getMinHeadIdx(loadDir):
 
     return modeIdx
 
+
+# get list of accuracy per confidence
 def getAccPerConfLst(Dict,linspaceNum,minConf=0.95):
 
     confLst = []
@@ -73,6 +77,10 @@ def getAccPerConfLst(Dict,linspaceNum,minConf=0.95):
     return finalConf, finalAcc,finalAllocNum
 
 
+# save path of each image of imagenet10
+# this code is need to train imagenet10 dataset.
+# To train imagenet10 data, .pkl file containing whole paths of
+# image should be saved by using this code
 def saveImagenetPathLstAndLabelDict(baseDir):
     
     # dolst = ['imagenet10','imagenet50','imagenet100','imagenet200']
@@ -104,8 +112,6 @@ def saveImagenetPathLstAndLabelDict(baseDir):
             pickle.dump(imagenetLabelDict,FF)
 
 
-# do = saveImagenetPathLstAndLabelDict(baseDir='/home/a286/hjs_dir1/mySCAN0/SCAN_imagenets/')
-
 def saveTinyImagenetPathLstAndLabelDict(baseDir):
 
     dir = baseDir + 'tiny-imagenet-200/train/'
@@ -134,7 +140,7 @@ def saveTinyImagenetPathLstAndLabelDict(baseDir):
         pickle.dump(imagenetLabelDict, FF)
 
 
-
+# load pretrained model to skip step A.
 def loadPretrained4imagenet(baseLoadDir,model):
     import torch
     from collections import OrderedDict
@@ -161,6 +167,8 @@ def loadPretrained4imagenet(baseLoadDir,model):
             or set(missing[1]) == {
                 'contrastive_head.weight', 'contrastive_head.bias'})
     return model
+
+
 
 
 def Pseudo2Label(dictionary,inputTensor):

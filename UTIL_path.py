@@ -17,7 +17,6 @@ from pathlib import Path
 
 import six
 
-
 from UTIL_misc import is_str
 
 if sys.version_info <= (3, 3):

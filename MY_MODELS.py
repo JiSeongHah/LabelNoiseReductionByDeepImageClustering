@@ -135,7 +135,8 @@ class ResNet(nn.Module):
 
         return out
 
-
+# load resnet for non imagnet dataset
+# cifar10, cifar20, stl10
 class callAnyResnet(nn.Module):
     def __init__(self,modelType,numClass,headType='mlp',useLinLayer=False,normalizing=True):
         super(callAnyResnet, self).__init__()
@@ -183,7 +184,8 @@ class callAnyResnet(nn.Module):
             out = F.normalize(out,dim=1)
         return out
 
-
+# code for loading resnet for imagenet data
+# imagenet10
 class callResnet4Imagenet(nn.Module):
     def __init__(self,modelType,numClass,headType='mlp',useLinLayer=False,normalizing=True):
         super(callResnet4Imagenet, self).__init__()
@@ -223,7 +225,7 @@ class callResnet4Imagenet(nn.Module):
 
 
 
-
+# code for cluster head
 class myCluster4SCAN(nn.Module):
     def __init__(self,
                  inputDim,
@@ -277,7 +279,8 @@ class myCluster4SCAN(nn.Module):
 
 
 
-
+# code for cluster head when training with
+# high confident data only
 class myPredictorHead(nn.Module):
     def __init__(self,
                  inputDim,
@@ -301,7 +304,7 @@ class myPredictorHead(nn.Module):
         out = self.MLP(x)
         return out
 
-
+# multi cluster head code when training with SCAN
 class myMultiCluster4SCAN(nn.Module):
     def __init__(self,
                  inputDim,

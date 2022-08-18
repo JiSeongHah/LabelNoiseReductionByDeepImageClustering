@@ -57,10 +57,6 @@ class AugmentedDataset(Dataset):
         return sample
 
 
-""" 
-    NeighborsDataset
-    Returns an image with one of its neighbors.
-"""
 
 
 class NeighborsDataset(Dataset):
@@ -130,6 +126,9 @@ class baseDataset4SCAN(Dataset):
             self.dataInput = preDataset.data
             self.dataLabel = preDataset.labels
 
+        # in the case of imagenet type data
+        # pkl containing path of each data and label of each data must be
+        # loaded in advance.
         if dataType in ['imagenet10','imagenet50','imagenet100','imagenet200','tinyImagenet']:
             with open(self.downDir+f'SCAN_imagenets/{dataType}_PathLst.pkl', 'rb') as F:
                 self.PathLst = pickle.load(F)
@@ -195,25 +194,6 @@ class baseDataset4SCAN(Dataset):
             out = {'image': img, 'label': label, 'meta': {'img_size': img_size, 'index': idx}}
 
             return out
-
-
-
-    # def get_image(self, index):
-    #     if self.dataType == 'cifar10' or \
-    #             self.dataType == 'cifar100' or \
-    #             self.dataType == 'stl10':
-    #
-    #         img = self.data[index]
-    #         return
-    #     else:
-    #         path = self.PathLst[idx]
-    #         label = self.labelDict[path.split('/')[-2]]
-    #
-    #         with open(path, 'rb') as f:
-    #             img = Image.open(f).convert('RGB')
-    #         img_size = img.size
-    #         img = self.resize(img)
-    #         return
 
 
 class noisedDataset4SCAN(Dataset):
@@ -639,39 +619,3 @@ def _cifar100_to_cifar20(target):
      99: 13}
 
   return _dict[target]
-
-# thetransform = transforms.Compose([transforms.ToTensor()
-#                                 ])
-# # dt = Cifar104SCAN(downDir='~/',transform=thetransform)
-# dt = getCustomizedDataset4SCAN(downDir='~/',transform=thetransform,toNeighborDataset=True,indices=np.random.randint(20,size=(50000,20)))
-# for i in dt:
-#     print(i)
-
-
-
-# from SPICE_CONFIG import Config
-# from SPICE_Transformation import get_train_transformations
-# import torch
-# from torchvision import datasets
-# from PIL import Image
-# import matplotlib.pyplot as plt
-# import random
-# from torch.utils.data import DataLoader
-#
-#
-#
-# cfg1 =Config.fromfile('/home/a286winteriscoming/PycharmProjects/DATA_VALUATION_REINFORCE/SPICE_Config_cifar10.py')
-# trans1 = cfg1.dataConfigs.trans1
-# trans2 = cfg1.dataConfigs.trans2
-#
-# trns1 = get_train_transformations(trans1)
-# trns2 = get_train_transformations(trans2)
-#
-# dt = CustomCifar10(downDir='/home/a286winteriscoming/',
-#                    transform1=trns1,
-#                    transform2=trns2)
-#
-# dx = DataLoader(dt,batch_size=32,shuffle=True,num_workers=2)
-#
-# for ori,trn1,trn2,label in dx:
-#     print(ori.size(),trn1.size(),trn2.size(),label.size())

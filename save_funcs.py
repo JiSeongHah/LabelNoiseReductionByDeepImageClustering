@@ -44,6 +44,10 @@ def mk_name(*args,**name_value_dict):
 
     return total_name
 
+
+# make directory.
+# if directory doesn't exist, it makes.
+# if directory exist already, it doens't make new one
 def createDirectory(directory):
     try:
         if not os.path.exists(directory):
@@ -60,6 +64,7 @@ def load_my_model(path):
     print('lst sored is : ',sorted_model_lst)
     return sorted_model_lst
 
+# delete file which is not in list
 def delFileOrFolders(dir,exceptionLst):
 
     fileLst = os.listdir(dir)
