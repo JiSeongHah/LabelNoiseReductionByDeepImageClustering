@@ -46,6 +46,7 @@ basemodelLoadDir = 'directory to load pretrained model'
 configPath = 'directory to load config'
 
 # 'cifar10' or 'cifar100' or 'stl10' or 'imagenet10'
+# 'cifar100' means case of 'cifar20'
 basemodelLoadName = 'stl10'
 # number of loading saved head
 headLoadNum = 300
