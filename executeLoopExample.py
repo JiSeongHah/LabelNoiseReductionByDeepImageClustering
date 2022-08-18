@@ -55,7 +55,14 @@ FELoadNum = 300
 # 2048 for imagenet10
 embedSize = 512
 
-# number of cluster class
+# number of cluster,
+# Important! Important! Important! Important! Important!
+# note that number of cluster was set to 10
+# for whole dataset even including cifar20.
+# number of cluster and number of class is different.
+# in the case of cifar20, number of class was 20 but number of
+# cluster was 10.
+# Important! Important! Important! Important! Important!
 clusterNum = 10
 
 # number of head
