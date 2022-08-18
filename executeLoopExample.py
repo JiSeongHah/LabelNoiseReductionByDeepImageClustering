@@ -39,15 +39,20 @@ from SCAN_MainLoop import doSCAN
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
-baseDir = 'your base directory'
-modelLoadDir = 'directory to load saved model'
-basemodelLoadDir = 'directory to load pretrained model'
-configPath = 'directory to load config'
+baseDir = '/home/a286/hjs_dir1/mySCAN1/'
+modelLoadDir = '/home/a286winteriscoming/'
+basemodelLoadDir = '/home/a286/hjs_dir1/mySCAN1/pretrainedModels/'
+configPath = '/home/a286/hjs_dir1/mySCAN1/SCAN_Configs.py'
+#
+# baseDir = 'your base directory'
+# modelLoadDir = 'directory to load saved model'
+# basemodelLoadDir = 'directory to load pretrained model'
+# configPath = 'directory to load config'
 
-basemodelLoadName = 'imagenet10'
+basemodelLoadName = 'stl10'
 headLoadNum = 300
 FELoadNum = 300
-embedSize = 2048
+embedSize = 512
 clusterNum = 10
 numHeads = 10
 entropyWeight = 5.0
@@ -83,8 +88,8 @@ plotsaveName = mk_name(embedSize=embedSize,
                        )
 
 for IIDX in range(1,2):
-    createDirectory(baseDir + f'dirResultImagenet10_new{12}/' + plotsaveName)
-    resultSaveDir = baseDir + f'dirResultImagenet10_new{12}/' + plotsaveName + '/'
+    createDirectory(baseDir + f'dirResultImagenet10_new{13}/' + plotsaveName)
+    resultSaveDir = baseDir + f'dirResultImagenet10_new{13}/' + plotsaveName + '/'
 
     headSaveLoadDir = resultSaveDir+'headModels/'
     FESaveLoadDir = resultSaveDir+'FEModels/'

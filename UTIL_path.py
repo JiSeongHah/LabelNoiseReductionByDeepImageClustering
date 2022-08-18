@@ -1,9 +1,22 @@
+"""
+@misc{niu2021spice,
+      title={SPICE: Semantic Pseudo-labeling for Image Clustering},
+      author={Chuang Niu and Ge Wang},
+      year={2021},
+      eprint={2103.09382},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+"""
+
+
 import os
 import os.path as osp
 import sys
 from pathlib import Path
 
 import six
+
 
 from UTIL_misc import is_str
 

@@ -1,3 +1,12 @@
+"""
+    @inproceedings{vangansbeke2020scan,
+    title={Scan: Learning to classify images without labels},
+    author={Van Gansbeke, Wouter and Vandenhende, Simon and Georgoulis, Stamatios and Proesmans, Marc and Van Gool, Luc},
+    booktitle={Proceedings of the European Conference on Computer Vision},
+    year={2020}
+}
+"""
+
 import torch
 import numpy as np
 from tqdm import tqdm

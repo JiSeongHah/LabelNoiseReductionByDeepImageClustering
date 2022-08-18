@@ -1,3 +1,14 @@
+"""
+@misc{niu2021spice,
+      title={SPICE: Semantic Pseudo-labeling for Image Clustering},
+      author={Chuang Niu and Ge Wang},
+      year={2021},
+      eprint={2103.09382},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+"""
+
 import torchvision.transforms as transforms
 
 dataConfigs_Cifar10 = dict(

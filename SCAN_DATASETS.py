@@ -1,3 +1,14 @@
+"""
+    for code of AugmentedDataset, NeighborsDataset'
+
+    @inproceedings{vangansbeke2020scan,
+    title={Scan: Learning to classify images without labels},
+    author={Van Gansbeke, Wouter and Vandenhende, Simon and Georgoulis, Stamatios and Proesmans, Marc and Van Gool, Luc},
+    booktitle={Proceedings of the European Conference on Computer Vision},
+    year={2020}
+}
+"""
+
 import numpy as np
 from torchvision.datasets import CIFAR10,CIFAR100,STL10
 from torch.utils.data import Dataset
@@ -14,10 +25,7 @@ import pickle
 import csv
 
 
-""" 
-    AugmentedDataset
-    Returns an image together with an augmentation.
-"""
+
 
 
 class AugmentedDataset(Dataset):

@@ -63,7 +63,7 @@ class doSCAN(nn.Module):
                  nnNum=20,
                  topKNum = 50,
                  selfLabelThreshold=0.99,
-                 downDir='/home/a286/hjs_dir1/mySCAN0/',
+                 downDir='/home/a286/hjs_dir1/mySCAN1/',
                  modelType='resnet18',
                  L2NormalEnd=True,
                  numRepeat=10,

@@ -1,3 +1,14 @@
+"""
+    In the case of code for resnet model(BasicBlock,Bottleneck,ResNet),
+
+    @inproceedings{vangansbeke2020scan,
+    title={Scan: Learning to classify images without labels},
+    author={Van Gansbeke, Wouter and Vandenhende, Simon and Georgoulis, Stamatios and Proesmans, Marc and Van Gool, Luc},
+    booktitle={Proceedings of the European Conference on Computer Vision},
+    year={2020}
+}
+"""
+
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
@@ -146,16 +157,7 @@ class callAnyResnet(nn.Module):
             self.backbone = models.resnet50(pretrained=False)
             self.backbone.fc = nn.Identity()
             self.backboneDim = 2048
-        # elif modelType == 'resnet101':
-        #     return ResNet(block=BottleNeck,
-        #                   num_blocks=[3,4,23,3],
-        #                   num_classes=numClass,
-        #                   L2NormalEnd=L2NormalEnd)
-        # elif modelType == 'resnet152':
-        #     return ResNet(block=BottleNeck,
-        #                   num_blocks=[3,8,36,3],
-        #                   num_classes=numClass,
-        #                   L2NormalEnd=L2NormalEnd)
+
         else:
             self.backbone = ResNet(block=BasicBlock,
                                    num_blocks=[2, 2, 2, 2]
@@ -204,16 +206,7 @@ class callResnet4Imagenet(nn.Module):
                                    num_blocks=[3,4,6,3]
                                    )
             self.backboneDim = 1024
-        # elif modelType == 'resnet101':
-        #     return ResNet(block=BottleNeck,
-        #                   num_blocks=[3,4,23,3],
-        #                   num_classes=numClass,
-        #                   L2NormalEnd=L2NormalEnd)
-        # elif modelType == 'resnet152':
-        #     return ResNet(block=BottleNeck,
-        #                   num_blocks=[3,8,36,3],
-        #                   num_classes=numClass,
-        #                   L2NormalEnd=L2NormalEnd)
+
         else:
             self.backbone = ResNet(block=BasicBlock,
                                    num_blocks=[2, 2, 2, 2]
@@ -262,22 +255,6 @@ class myCluster4SCAN(nn.Module):
         if self.lossMethod == 'CE':
             self.LOSS = nn.CrossEntropyLoss()
 
-    # def calEntropy(self, actions, isActionInput_prob=True):
-    #
-    #     if isActionInput_prob == True:
-    #         x_ = torch.clamp(actions, min=1e-8)
-    #         b = x_ * torch.log(x_)
-    #     else:
-    #         b = F.softmax(actions, dim=1) * F.log_softmax(actions, dim=1)
-    #
-    #     if len(b.size()) == 2:  # Sample-wise entropy
-    #         Entropy = b.sum(dim=1).mean()
-    #         return Entropy
-    #     elif len(b.size()) == 1:  # Distribution-wise entropy
-    #         Entropy = b.sum()
-    #         return Entropy
-    #     else:
-    #         raise ValueError('Input tensor is %d-Dimensional' % (len(b.size())))
 
     def getLoss(self,pred,label,withEntropy=False,entropyWeight=5.0,clusteringWeight=1.0):
 
@@ -393,63 +370,5 @@ class myMultiCluster4SCAN(nn.Module):
     def forwardWithMinLossHead(self,inputs,headIdxWithMinLoss):
 
         return self.__getattr__(f'eachHead_{headIdxWithMinLoss}').forward(x=inputs)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
